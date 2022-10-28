@@ -4,13 +4,13 @@ import threading
 import time
 import traceback
 from collections import deque
-from typing import Callable
+from typing import Callable, Dict, Any
 
 
 class NotifiableError(Exception):
     """Base error that posts event for this error"""
 
-    def __init__(self, message: str, error: str, payload: dict, exception: traceback = None):
+    def __init__(self, message: str, error: str, payload: Dict[str, Any], exception: traceback = None):
         # Check if subclass provided an error already, which could be a sub-error type.
         if 'error' not in payload:
             payload['error'] = error
@@ -24,12 +24,12 @@ class NotifiableError(Exception):
 
 
 class Data:
-    def __init__(self, data: dict):
+    def __init__(self, data: Dict[str, Any]):
         if data is None:
             raise InvalidDataError()
         self.__data = data
 
-    def get(self, key: str, data: dict = None):
+    def get(self, key: str, data: Dict[str, Any] = None):
         data = data if data else self.__data
         try:
             return data[key]
@@ -37,7 +37,7 @@ class Data:
             raise MissingKeyError(key, data)
 
     @property
-    def raw(self) -> dict:
+    def raw(self) -> Dict[str, Any]:
         return self.__data
 
     @property
@@ -54,7 +54,7 @@ class InvalidDataError(NotifiableError):
 
 
 class MissingKeyError(NotifiableError):
-    def __init__(self, key: str, data: dict):
+    def __init__(self, key: str, data: Dict[str, Any]):
         message = f"Could not find key '{key}' within data:\n{data}."
         error = 'missing_key'
         payload = {
@@ -68,7 +68,7 @@ class Event(Data):
     __lock = threading.Lock()
     __id = 0
 
-    def __init__(self, name: str, payload: dict):
+    def __init__(self, name: str, payload: Dict[str, Any]):
         super(Event, self).__init__({
             'id': Event.generate_id(),
             'time': time.time(),
@@ -97,11 +97,11 @@ class Event(Data):
         return self.get('name')
 
     @property
-    def payload(self) -> dict:
+    def payload(self) -> Dict[str, Any]:
         return self.get('payload')
 
     @staticmethod
-    def from_dict(data: dict):
+    def from_dict(data: Dict[str, Any]):
         return Event(data.get('name'), data.get('payload'))
 
 
@@ -120,8 +120,8 @@ class EventDispatch:
 
     # --- For testing purposes ------------------------------------------------------------------------------
     __event_log = deque(maxlen=__EVENT_LOG_SIZE)
-    __log_event = False
-    __log_event_if_no_handlers = False
+    __log_event: bool = False
+    __log_event_if_no_handlers: bool = False
 
     def toggle_event_logging(self, is_log: bool = False):
         self.__log_event = is_log
@@ -134,7 +134,7 @@ class EventDispatch:
         self.__event_log = deque(maxlen=self.__EVENT_LOG_SIZE)
 
     @property
-    def log_event_if_no_handlers(self):
+    def log_event_if_no_handlers(self) -> bool:
         return self.__log_event_if_no_handlers
 
     @log_event_if_no_handlers.setter
@@ -142,7 +142,7 @@ class EventDispatch:
         self.__log_event_if_no_handlers = value
 
     @property
-    def event_handlers(self) -> dict:
+    def event_handlers(self) -> Dict[str, Any]:
         return self.__event_handlers
 
     @property
@@ -195,7 +195,7 @@ class EventDispatch:
             self.__post_admin_event__unregistered(handler, events)
             self.__log_message_unregistered(handler, events)
 
-    def post_event(self, name: str, payload: dict = None):
+    def post_event(self, name: str, payload: Dict[str, Any] = None):
         self.__lock.acquire()
 
         payload = payload if payload else {}

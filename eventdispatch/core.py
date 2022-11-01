@@ -106,8 +106,8 @@ class Event(Data):
 
 
 class EventDispatch:
-    REGISTRATION_EVENT = 'event_center.handler_registered'
-    UNREGISTRATION_EVENT = 'event_center.handler_unregistered'
+    REGISTRATION_EVENT = 'event_dispatch.handler_registered'
+    UNREGISTRATION_EVENT = 'event_dispatch.handler_unregistered'
 
     __ALL_EVENTS = '*'
     __EVENT_LOG_SIZE = 5
@@ -116,7 +116,7 @@ class EventDispatch:
     __logger = logging.getLogger(__name__)
     __lock = threading.Lock()
 
-    __event_handlers = {}
+    __event_handlers: Dict[str, list[Callable]] = {}
 
     # --- For testing purposes ------------------------------------------------------------------------------
     __event_log = deque(maxlen=__EVENT_LOG_SIZE)

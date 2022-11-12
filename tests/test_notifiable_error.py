@@ -30,13 +30,14 @@ TEST_ERROR1 = 'error1'
 TEST_ERROR2 = 'error2'
 TEST_KEY = 'key'
 TEST_VALUE = 'value'
+TEST_ERROR_MESSAGE = 'test error message'
 
 SOME_OTHER_ERROR = 'some_other_error'
 
 
 class TestErrorNotInPayloadError(NotifiableError):
     def __init__(self):
-        message = ''
+        message = TEST_ERROR_MESSAGE
         error = TEST_ERROR1
         payload = {
             TEST_KEY: TEST_VALUE
@@ -46,7 +47,7 @@ class TestErrorNotInPayloadError(NotifiableError):
 
 class TestErrorInPayloadError(NotifiableError):
     def __init__(self):
-        message = ''
+        message = TEST_ERROR_MESSAGE
         error = TEST_ERROR2
         payload = {
             TEST_KEY: TEST_VALUE,
@@ -63,7 +64,8 @@ def test_notifiable_error__when_error_not_in_payload():
     register_handler_for_event(handler, TEST_ERROR1)
     expected_payload = {
         TEST_KEY: TEST_VALUE,
-        'error': TEST_ERROR1
+        'error': TEST_ERROR1,
+        'message': TEST_ERROR_MESSAGE
     }
 
     # Test
@@ -84,7 +86,8 @@ def test_notifiable_error__when_error_in_payload():
     register_handler_for_event(handler, TEST_ERROR2)
     expected_payload = {
         TEST_KEY: TEST_VALUE,
-        'error': SOME_OTHER_ERROR
+        'error': SOME_OTHER_ERROR,
+        'message': TEST_ERROR_MESSAGE
     }
 
     # Test

@@ -70,12 +70,12 @@ class Event(Data):
     __lock = threading.Lock()
     __id = 0
 
-    def __init__(self, name: str, payload: Dict[str, Any]):
+    def __init__(self, name: str, payload: Dict[str, Any] = None):
         super(Event, self).__init__({
             'id': Event.generate_id(),
             'time': time.time(),
             'name': name,
-            'payload': payload
+            'payload': payload if payload else {}
         })
 
     @staticmethod

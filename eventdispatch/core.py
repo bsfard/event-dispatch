@@ -4,7 +4,40 @@ import threading
 import time
 import traceback
 from collections import deque
+from enum import Enum
 from typing import Callable, Dict, Any
+
+
+class NamespacedEnum(Enum):
+    """
+    Adds a namespace (optional) to prepend to enum values.  To set namespace, override the "get_namespace(self)"
+    to return desired namespace.
+    """
+    def __init__(self, _):
+        self.namespace = self.get_namespace()
+
+    def get_namespace(self) -> str:
+        pass
+
+    @property
+    def namespaced_value(self) -> str:
+        return f'{self.namespace}.{self.value}' if self.namespace else self.value
+
+
+def post_event(event: Any, payload: Dict[str, Any] = None):
+    """
+    Posts an event (with optional payload of info) for which registered listeners (callbacks) can get notified.
+    :param event: event name/type (string or enum) to post
+    :param payload: optional dictionary of keyed-values to include with the event
+    :return: None
+    """
+
+    if isinstance(event, NamespacedEnum):
+        EventDispatch().post_event(str(event.namespaced_value), payload)
+    elif isinstance(event, Enum):
+        EventDispatch().post_event(str(event.value), payload)
+    elif isinstance(event, str):
+        EventDispatch().post_event(event, payload)
 
 
 class NotifiableError(Exception):

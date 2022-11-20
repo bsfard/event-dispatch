@@ -14,14 +14,14 @@ class NamespacedEnum(Enum):
     to return desired namespace.
     """
     def __init__(self, _):
-        self.namespace = self.get_namespace()
+        self.__namespace = self.get_namespace()
 
     def get_namespace(self) -> str:
         pass
 
     @property
     def namespaced_value(self) -> str:
-        return f'{self.namespace}.{self.value}' if self.namespace else self.value
+        return f'{self.__namespace}.{self.value}' if self.__namespace else self.value
 
 
 def post_event(event: Any, payload: Dict[str, Any] = None):

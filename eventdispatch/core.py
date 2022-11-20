@@ -24,20 +24,41 @@ class NamespacedEnum(Enum):
         return f'{self.__namespace}.{self.value}' if self.__namespace else self.value
 
 
+def register_for_events(handler: Callable, events: [Any]):
+    """
+    Registers for the specified events
+    :param handler: callback function that will be called when specified event occurs
+    :param events: list of event names/types (string or Enum or NamespacedEnum) for which to register
+    :return:
+    """
+    if not handler:
+        return
+    EventDispatch().register(handler, EventDispatch.to_string_events(events))
+
+
+def unregister_from_events(handler: Callable, events: [Any]):
+    """
+    Unregisters from the specified events
+    :param handler: callback function that was provided when registering
+    :param events: list of event names/types (string or Enum or NamespacedEnum) from which to unregister
+    :return: None
+    """
+    if not handler:
+        return
+    EventDispatch().unregister(handler, EventDispatch.to_string_events(events))
+
+
 def post_event(event: Any, payload: Dict[str, Any] = None):
     """
     Posts an event (with optional payload of info) for which registered listeners (callbacks) can get notified.
-    :param event: event name/type (string or enum) to post
+    :param event: event name/type (string or Enum or NamespacedEnum) to post
     :param payload: optional dictionary of keyed-values to include with the event
     :return: None
     """
 
-    if isinstance(event, NamespacedEnum):
-        EventDispatch().post_event(str(event.namespaced_value), payload)
-    elif isinstance(event, Enum):
-        EventDispatch().post_event(str(event.value), payload)
-    elif isinstance(event, str):
-        EventDispatch().post_event(event, payload)
+    if not event:
+        return
+    EventDispatch().post_event(EventDispatch.to_string_event(event), payload)
 
 
 class NotifiableError(Exception):
@@ -265,6 +286,22 @@ class EventDispatch:
         self.__log_message_posted_event(event)
 
         self.__lock.release()
+
+    @staticmethod
+    def to_string_events(events: [Any]) -> [str]:
+        string_events = []
+        for event in events:
+            string_events.append(EventDispatch.to_string_event(event))
+        return string_events
+
+    @staticmethod
+    def to_string_event(event: [Any]) -> str:
+        if isinstance(event, NamespacedEnum):
+            return str(event.namespaced_value)
+        elif isinstance(event, Enum):
+            return str(event.value)
+        else:
+            return event
 
     def __register_for_event(self, handler: Callable, event: str) -> bool:
         try:

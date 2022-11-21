@@ -73,7 +73,8 @@ class NotifiableError(Exception):
             payload['stacktrace'] = ''.join(
                 traceback.format_exception(etype=type(exception), value=exception, tb=exception.__traceback__))
 
-        payload['message'] = message
+        if message:
+            payload['message'] = message
 
         super().__init__(message)
         post_event(error, payload)

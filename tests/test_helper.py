@@ -1,8 +1,9 @@
-from typing import Callable
+from typing import Callable, Any, Dict
 
 import pytest
 
 from eventdispatch import Event, EventDispatch
+from eventdispatch.core import EventDispatchEvent
 
 
 class TestEventHandler:
@@ -63,10 +64,12 @@ def validate_handler_registered_for_event(handler: Callable, event: str = None):
     assert handler in handlers
 
 
-def validate_received_events(handler, expected_events, is_ignore_registration_event=True):
+def validate_received_events(handler: TestEventHandler, expected_events: [Any], is_ignore_registration_event=True):
+    expected_events = EventDispatch.to_string_events(expected_events)
+    registration_event = EventDispatch.to_string_event(EventDispatchEvent.HANDLER_REGISTERED)
     if is_ignore_registration_event:
-        if EventDispatch.REGISTRATION_EVENT in handler.received_events:
-            handler.received_events.pop(EventDispatch.REGISTRATION_EVENT)
+        if registration_event in handler.received_events:
+            handler.received_events.pop(registration_event)
 
     assert len(handler.received_events) == len(expected_events)
 
@@ -80,7 +83,8 @@ def validate_received_events(handler, expected_events, is_ignore_registration_ev
         handler.received_events.pop(event)
 
 
-def validate_received_event(handler: TestEventHandler, expected_event: str, expected_payload: dict):
+def validate_received_event(handler: TestEventHandler, expected_event: Any, expected_payload: Dict[str, Any]):
+    expected_event = EventDispatch.to_string_event(expected_event)
     for name, event in handler.received_events.items():
         if name == expected_event:
             if event.payload.keys() == expected_payload.keys():

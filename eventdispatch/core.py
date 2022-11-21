@@ -76,7 +76,7 @@ class NotifiableError(Exception):
         payload['message'] = message
 
         super().__init__(message)
-        EventDispatch().post_event(error, payload)
+        post_event(error, payload)
 
 
 class Data:
@@ -161,10 +161,15 @@ class Event(Data):
         return Event(data.get('name'), data.get('payload'))
 
 
-class EventDispatch:
-    REGISTRATION_EVENT = 'event_dispatch.handler_registered'
-    UNREGISTRATION_EVENT = 'event_dispatch.handler_unregistered'
+class EventDispatchEvent(NamespacedEnum):
+    HANDLER_REGISTERED = 'handler_registered'
+    HANDLER_UNREGISTERED = 'handler_unregistered'
 
+    def get_namespace(self) -> str:
+        return 'event_dispatch'
+
+
+class EventDispatch:
     __ALL_EVENTS = '*'
     __EVENT_LOG_SIZE = 5
 
@@ -341,7 +346,7 @@ class EventDispatch:
         # Replace internal marking for 'all events' with an empty list.
         if events == [self.__ALL_EVENTS]:
             events = []
-        self.post_event(self.REGISTRATION_EVENT, {
+        post_event(EventDispatchEvent.HANDLER_REGISTERED, {
             'events': events,
             'handler': repr(handler)
         })
@@ -350,7 +355,7 @@ class EventDispatch:
         # Replace internal marking for 'all events' with an empty list.
         if events == [self.__ALL_EVENTS]:
             events = []
-        self.post_event(self.UNREGISTRATION_EVENT, {
+        post_event(EventDispatchEvent.HANDLER_UNREGISTERED, {
             'events': events,
             'handler': repr(handler)
         })

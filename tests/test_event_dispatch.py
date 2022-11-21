@@ -2,6 +2,7 @@ import time
 from typing import Any
 
 from eventdispatch import EventDispatch
+from eventdispatch.core import EventDispatchEvent
 from test_helper import TestEventHandler, validate_test_handler_registered_for_event, \
     validate_handler_registered_for_all_events, validate_event_log_count, validate_expected_handler_count, \
     register_handler_for_event, register, validate_received_events
@@ -145,14 +146,14 @@ def test_register__confirm_registration_event_is_posted():
     # Setup
     register_handler_for_event(all_event_handler)
     time.sleep(0.1)
-    validate_received_events(all_event_handler, [EventDispatch.REGISTRATION_EVENT], is_ignore_registration_event=False)
+    validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED], is_ignore_registration_event=False)
     test_event = 'test_event'
 
     # Test
     register(handler1, [test_event])
 
     # Verify
-    validate_received_events(all_event_handler, [EventDispatch.REGISTRATION_EVENT], is_ignore_registration_event=False)
+    validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED], is_ignore_registration_event=False)
 
 
 def test_post__when_no_registered_handlers_for_event():
@@ -369,7 +370,7 @@ def test_unregister__confirm_unregistration_event_is_posted():
 
     # Verify
     validate_received_events(all_event_handler,
-                             [EventDispatch.REGISTRATION_EVENT, EventDispatch.UNREGISTRATION_EVENT],
+                             [EventDispatchEvent.HANDLER_REGISTERED, EventDispatchEvent.HANDLER_UNREGISTERED],
                              is_ignore_registration_event=False)
 
 

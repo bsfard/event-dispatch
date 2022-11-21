@@ -1,5 +1,7 @@
 from .core import NamespacedEnum as NamespacedEnum
 from .core import post_event as post_event
+from .core import register_for_events as register_for_events
+from .core import unregister_from_events as unregister_from_events
 
 from .core import NotifiableError as NotifiableError
 from .core import InvalidDataError as InvalidDataError

@@ -12,17 +12,29 @@ class Properties:
             cls.__instance = super().__new__(cls)
         return cls.__instance
 
+    @staticmethod
     def has(self, property_name: str) -> bool:
+        return Properties().__has(property_name)
+
+    def __has(self, property_name: str) -> bool:
         return property_name in self.__properties
 
-    def get(self, property_name: str) -> Any:
+    @staticmethod
+    def get(property_name: str) -> Any:
+        return Properties().__get(property_name)
+
+    def __get(self, property_name: str) -> Any:
         try:
             p = self.__properties[property_name]
             return p.get('value')
         except KeyError:
             raise PropertyNotSetError(property_name)
 
+    @staticmethod
     def set(self, property_name: str, value: Any, is_mutable=False, is_skip_if_exists=False):
+        Properties().__set(property_name, value, is_mutable, is_skip_if_exists)
+
+    def __set(self, property_name: str, value: Any, is_mutable=False, is_skip_if_exists=False):
         try:
             # Check if property exists.
             p = self.__properties[property_name]
@@ -44,7 +56,11 @@ class Properties:
                 'is_mutable': is_mutable
             }
 
+    @staticmethod
     def get_list(self) -> [str]:
+        return Properties().__get_list()
+
+    def __get_list(self) -> [str]:
         return list(self.__properties.keys())
 
 

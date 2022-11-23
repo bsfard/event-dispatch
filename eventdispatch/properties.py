@@ -13,7 +13,7 @@ class Properties:
         return cls.__instance
 
     @staticmethod
-    def has(self, property_name: str) -> bool:
+    def has(property_name: str) -> bool:
         return Properties().__has(property_name)
 
     def __has(self, property_name: str) -> bool:
@@ -31,7 +31,7 @@ class Properties:
             raise PropertyNotSetError(property_name)
 
     @staticmethod
-    def set(self, property_name: str, value: Any, is_mutable=False, is_skip_if_exists=False):
+    def set(property_name: str, value: Any, is_mutable=False, is_skip_if_exists=False):
         Properties().__set(property_name, value, is_mutable, is_skip_if_exists)
 
     def __set(self, property_name: str, value: Any, is_mutable=False, is_skip_if_exists=False):
@@ -57,7 +57,7 @@ class Properties:
             }
 
     @staticmethod
-    def get_list(self) -> [str]:
+    def get_list() -> [str]:
         return Properties().__get_list()
 
     def __get_list(self) -> [str]:

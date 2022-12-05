@@ -5,6 +5,7 @@ import time
 import traceback
 from collections import deque
 from enum import Enum
+from queue import Queue
 from typing import Callable, Dict, Any
 
 
@@ -180,6 +181,8 @@ class EventDispatch:
 
     __event_handlers: Dict[str, list[Callable]] = {}
 
+    __event_queue: Queue = Queue()
+
     # --- For testing purposes ------------------------------------------------------------------------------
     __event_log = deque(maxlen=__EVENT_LOG_SIZE)
     __log_event: bool = False
@@ -204,7 +207,7 @@ class EventDispatch:
         self.__log_event_if_no_handlers = value
 
     @property
-    def event_handlers(self) -> Dict[str, Any]:
+    def event_handlers(self) -> Dict[str, list[Callable]]:
         return self.__event_handlers
 
     @property
@@ -212,13 +215,14 @@ class EventDispatch:
         return self.__event_handlers.get(self.__ALL_EVENTS, [])
 
     def clear_registered_handlers(self):
-        self.__event_handlers = {}
+        self.__event_handlers: Dict[str, list[Callable]] = {}
 
     # -------------------------------------------------------------------------------------------------------
 
     def __new__(cls):
         if not cls.__instance:
             cls.__instance = super().__new__(cls)
+            threading.Thread(target=EventDispatch.monitor_event_queue, daemon=True).start()
         return cls.__instance
 
     def register(self, handler: Callable, events: [str]):
@@ -286,12 +290,19 @@ class EventDispatch:
 
         # Notify all handlers using threads (so handlers don't need to implement their own thread).
         for handler in event_handlers:
-            t = threading.Thread(target=handler, args=[event])
-            t.start()
+            # Add thread to notify handler onto event queue (so event order would be maintained per handler).
+            self.__event_queue.put(threading.Thread(target=handler, args=[event]))
 
         self.__log_message_posted_event(event)
 
         self.__lock.release()
+
+    @staticmethod
+    def monitor_event_queue():
+        while True:
+            thread = EventDispatch.__event_queue.get()
+            thread.start()
+            EventDispatch.__event_queue.task_done()
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:

@@ -1,3 +1,5 @@
+import time
+
 from eventdispatch import NotifiableError, EventDispatch
 from test_helper import TestEventHandler, register_handler_for_event, validate_received_event
 
@@ -75,6 +77,7 @@ def test_notifiable_error__when_error_not_in_payload():
         pass
 
     # Verify
+    time.sleep(0.1)
     validate_received_event(handler, TEST_ERROR1, expected_payload)
 
 
@@ -97,4 +100,5 @@ def test_notifiable_error__when_error_in_payload():
         pass
 
     # Verify
+    time.sleep(0.1)
     validate_received_event(handler, TEST_ERROR2, expected_payload)

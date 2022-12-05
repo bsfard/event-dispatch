@@ -153,6 +153,7 @@ def test_register__confirm_registration_event_is_posted():
     register(handler1, [test_event])
 
     # Verify
+    time.sleep(0.1)
     validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED], is_ignore_registration_event=False)
 
 
@@ -187,6 +188,7 @@ def test_post_event__when_no_registered_handlers_but_have_all_event_registered_h
 
     # Verify
     validate_event_log_count(2)
+    time.sleep(0.1)
     validate_received_events(all_event_handler, [test_event])
 
 
@@ -204,6 +206,7 @@ def test_post_event_when_registered_handler_for_event():
 
     # Verify
     validate_event_log_count(2)
+    time.sleep(0.1)
     validate_received_events(handler1, [test_event])
 
 
@@ -222,6 +225,7 @@ def test_post_event__when_registered_handler_and_different_all_event_registered_
 
     # Verify
     validate_event_log_count(3)
+    time.sleep(0.1)
     validate_received_events(handler1, [test_event])
     validate_received_events(all_event_handler, [test_event])
 
@@ -244,6 +248,7 @@ def test_post_event__when_same_registered_and_all_event_registered_handlers():
 
     # Verify
     validate_event_log_count(3)
+    time.sleep(0.1)
     validate_received_events(handler1, [test_event])
 
 
@@ -261,6 +266,7 @@ def test_post_event__when_two_registered_handlers_for_same_event():
 
     # Verify
     validate_event_log_count(3)
+    time.sleep(0.1)
     validate_received_events(handler1, [test_event])
     validate_received_events(handler2, [test_event])
 
@@ -369,6 +375,7 @@ def test_unregister__confirm_unregistration_event_is_posted():
     unregister(handler1, [test_event])
 
     # Verify
+    time.sleep(0.1)
     validate_received_events(all_event_handler,
                              [EventDispatchEvent.HANDLER_REGISTERED, EventDispatchEvent.HANDLER_UNREGISTERED],
                              is_ignore_registration_event=False)

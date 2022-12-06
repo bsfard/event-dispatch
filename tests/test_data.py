@@ -48,7 +48,7 @@ def test_init__when_data_is_empty_dict():
     d = Data(data)
 
     # Verify
-    assert d.raw == data
+    assert d.dict == data
     assert d.json == '{}'
 
 
@@ -108,7 +108,7 @@ def test_get__when_have_raw_data__key_exists():
 
     # Verify
     assert value == data['key']
-    assert d.raw == data
+    assert d.dict == data
     assert d.json == data_json
 
 

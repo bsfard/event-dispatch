@@ -95,7 +95,7 @@ class Data:
             raise MissingKeyError(key, data)
 
     @property
-    def raw(self) -> Dict[str, Any]:
+    def dict(self) -> Dict[str, Any]:
         return self.__data
 
     @property

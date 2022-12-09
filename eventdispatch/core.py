@@ -6,7 +6,7 @@ import traceback
 from collections import deque
 from enum import Enum
 from queue import Queue
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, Union
 
 
 class NamespacedEnum(Enum):
@@ -23,62 +23,6 @@ class NamespacedEnum(Enum):
     @property
     def namespaced_value(self) -> str:
         return f'{self.__namespace}.{self.value}' if self.__namespace else self.value
-
-
-def register_for_events(handler: Callable, events: [Any]):
-    """
-    Registers for the specified events
-    :param handler: callback function that will be called when specified event occurs
-    :param events: list of event names/types (string or Enum or NamespacedEnum) for which to register
-    :return:
-    """
-    if not handler:
-        return
-    EventDispatch().register(handler, EventDispatch.to_string_events(events))
-
-
-def unregister_from_events(handler: Callable, events: [Any]):
-    """
-    Unregisters from the specified events
-    :param handler: callback function that was provided when registering
-    :param events: list of event names/types (string or Enum or NamespacedEnum) from which to unregister
-    :return: None
-    """
-    if not handler:
-        return
-    EventDispatch().unregister(handler, EventDispatch.to_string_events(events))
-
-
-def post_event(event: Any, payload: Dict[str, Any] = None):
-    """
-    Posts an event (with optional payload of info) for which registered listeners (callbacks) can get notified.
-    :param event: event name/type (string or Enum or NamespacedEnum) to post
-    :param payload: optional dictionary of keyed-values to include with the event
-    :return: None
-    """
-
-    if not event:
-        return
-    EventDispatch().post_event(EventDispatch.to_string_event(event), payload)
-
-
-class NotifiableError(Exception):
-    """Base error that posts event for this error"""
-
-    def __init__(self, message: str, error: str, payload: Dict[str, Any], exception: traceback = None):
-        # Check if subclass provided an error already, which could be a sub-error type.
-        if 'error' not in payload:
-            payload['error'] = error
-
-        if exception:
-            payload['stacktrace'] = ''.join(
-                traceback.format_exception(etype=type(exception), value=exception, tb=exception.__traceback__))
-
-        if message:
-            payload['message'] = message
-
-        super().__init__(message)
-        post_event(error, payload)
 
 
 class Data:
@@ -101,25 +45,6 @@ class Data:
     @property
     def json(self) -> str:
         return json.dumps(self.__data)
-
-
-class InvalidDataError(NotifiableError):
-    def __init__(self):
-        message = f"Cannot create data object from 'None' data input"
-        error = 'invalid_data_input'
-        payload = {}
-        super().__init__(message, error, payload)
-
-
-class MissingKeyError(NotifiableError):
-    def __init__(self, key: str, data: Dict[str, Any]):
-        message = f"Could not find key '{key}' within data:\n{data}."
-        error = 'missing_key'
-        payload = {
-            'key': key,
-            'data': data
-        }
-        super().__init__(message, error, payload)
 
 
 class Event(Data):
@@ -161,6 +86,81 @@ class Event(Data):
     @staticmethod
     def from_dict(data: Dict[str, Any]):
         return Event(data.get('name'), data.get('payload'))
+
+
+def register_for_events(handler: Callable[[Event], None], events: [Union[str, Enum, NamespacedEnum]]):
+    """
+    Registers for the specified events
+    :param handler: callback function that will be called when specified event occurs
+    :param events: list of event names/types (string or Enum or NamespacedEnum) for which to register
+    :return:
+    """
+    if not handler:
+        return
+    EventDispatchManager().default_dispatch.register(handler, EventDispatch.to_string_events(events))
+
+
+def unregister_from_events(handler: Callable[[Event], None], events: [Union[str, Enum, NamespacedEnum]]):
+    """
+    Unregisters from the specified events
+    :param handler: callback function that was provided when registering
+    :param events: list of event names/types (string or Enum or NamespacedEnum) from which to unregister
+    :return: None
+    """
+    if not handler:
+        return
+    EventDispatchManager().default_dispatch.unregister(handler, EventDispatch.to_string_events(events))
+
+
+def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any] = None):
+    """
+    Posts an event (with optional payload of info) for which registered listeners (callbacks) can get notified.
+    :param event: event name/type (string or Enum or NamespacedEnum) to post
+    :param payload: optional dictionary of keyed-values to include with the event
+    :return: None
+    """
+
+    if not event:
+        return
+    EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload)
+
+
+class NotifiableError(Exception):
+    """Base error that posts event for this error"""
+
+    def __init__(self, message: str, error: str, payload: Dict[str, Any], exception: traceback = None):
+        # Check if subclass provided an error already, which could be a sub-error type.
+        if 'error' not in payload:
+            payload['error'] = error
+
+        if exception:
+            payload['stacktrace'] = ''.join(
+                traceback.format_exception(etype=type(exception), value=exception, tb=exception.__traceback__))
+
+        if message:
+            payload['message'] = message
+
+        super().__init__(message)
+        post_event(error, payload)
+
+
+class InvalidDataError(NotifiableError):
+    def __init__(self):
+        message = f"Cannot create data object from 'None' data input"
+        error = 'invalid_data_input'
+        payload = {}
+        super().__init__(message, error, payload)
+
+
+class MissingKeyError(NotifiableError):
+    def __init__(self, key: str, data: Dict[str, Any]):
+        message = f"Could not find key '{key}' within data:\n{data}."
+        error = 'missing_key'
+        payload = {
+            'key': key,
+            'data': data
+        }
+        super().__init__(message, error, payload)
 
 
 class EventDispatchEvent(NamespacedEnum):
@@ -219,11 +219,9 @@ class EventDispatch:
 
     # -------------------------------------------------------------------------------------------------------
 
-    def __new__(cls):
-        if not cls.__instance:
-            cls.__instance = super().__new__(cls)
-            threading.Thread(target=EventDispatch.monitor_event_queue, daemon=True).start()
-        return cls.__instance
+    def __init__(self, channel: str = ''):
+        self.__channel = channel
+        threading.Thread(target=EventDispatch.monitor_event_queue, daemon=True).start()
 
     def register(self, handler: Callable, events: [str]):
         self.__validate_events(events)
@@ -387,6 +385,27 @@ class EventDispatch:
     def __log_message_posted_event(self, event: Event):
         message = f"Posted event'{event.name}'"
         self.__logger.debug(message)
+
+
+class EventDispatchManager:
+    __instance = None
+    __event_dispatchers: Dict[str, EventDispatch] = {}
+
+    def __new__(cls):
+        if not cls.__instance:
+            cls.__instance = super().__new__(cls)
+
+            # Create default event dispatcher (for local events, as well as events without a channel).
+            cls.__event_dispatchers[''] = EventDispatch()
+        return cls.__instance
+
+    @property
+    def event_dispatchers(self) -> Dict[str, EventDispatch]:
+        return self.__event_dispatchers
+
+    @property
+    def default_dispatch(self) -> EventDispatch:
+        return self.__event_dispatchers['']
 
 
 class InvalidEventError(NotifiableError):

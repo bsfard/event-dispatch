@@ -2,26 +2,30 @@ import time
 from typing import Any
 
 from eventdispatch import EventDispatch
-from eventdispatch.core import EventDispatchEvent
+from eventdispatch.core import EventDispatchEvent, EventDispatchManager
 from test_helper import TestEventHandler, validate_test_handler_registered_for_event, \
     validate_handler_registered_for_all_events, validate_event_log_count, validate_expected_handler_count, \
     register_handler_for_event, register, validate_received_events
 
+event_dispatch: EventDispatch
 handler1: TestEventHandler
 handler2: TestEventHandler
 all_event_handler: TestEventHandler
 
 
 def setup_module():
-    EventDispatch().toggle_event_logging(True)
+    global event_dispatch
+
+    event_dispatch = EventDispatchManager().default_dispatch
+    event_dispatch.toggle_event_logging(True)
 
 
 def setup_function():
     global handler1, handler2, all_event_handler
 
-    EventDispatch().clear_event_log()
-    EventDispatch().clear_registered_handlers()
-    EventDispatch().log_event_if_no_handlers = True
+    event_dispatch.clear_event_log()
+    event_dispatch.clear_registered_handlers()
+    event_dispatch.log_event_if_no_handlers = True
 
     handler1 = TestEventHandler()
     handler2 = TestEventHandler()
@@ -33,7 +37,7 @@ def teardown_function():
 
 
 def teardown_module():
-    EventDispatch().toggle_event_logging(False)
+    event_dispatch.toggle_event_logging(False)
 
 
 def test_register__when_not_registered():
@@ -146,7 +150,8 @@ def test_register__confirm_registration_event_is_posted():
     # Setup
     register_handler_for_event(all_event_handler)
     time.sleep(0.1)
-    validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED], is_ignore_registration_event=False)
+    validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED],
+                             is_ignore_registration_event=False)
     test_event = 'test_event'
 
     # Test
@@ -154,7 +159,8 @@ def test_register__confirm_registration_event_is_posted():
 
     # Verify
     time.sleep(0.1)
-    validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED], is_ignore_registration_event=False)
+    validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED],
+                             is_ignore_registration_event=False)
 
 
 def test_post__when_no_registered_handlers_for_event():
@@ -163,7 +169,7 @@ def test_post__when_no_registered_handlers_for_event():
 
     # Setup
     test_event = 'test_event'
-    EventDispatch().log_event_if_no_handlers = False
+    event_dispatch.log_event_if_no_handlers = False
     validate_event_log_count(0)
 
     # Test
@@ -382,8 +388,8 @@ def test_unregister__confirm_unregistration_event_is_posted():
 
 
 def unregister(handler: TestEventHandler, events: [str]):
-    EventDispatch().unregister(handler.on_event, events)
+    event_dispatch.unregister(handler.on_event, events)
 
 
 def post_event(event: str, payload: dict[str: Any] = None):
-    EventDispatch().post_event(event, payload)
+    event_dispatch.post_event(event, payload)

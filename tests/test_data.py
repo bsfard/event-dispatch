@@ -1,3 +1,5 @@
+from typing import Dict, Any
+
 import pytest
 
 from eventdispatch import Data, InvalidDataError, MissingKeyError
@@ -24,7 +26,8 @@ def test_init__when_data_is_none():
     # Data object creation is not allowed, exception is thrown.
 
     # Setup
-    data = None
+    # noinspection PyTypeChecker
+    data: Dict[str, Any] = None
 
     # Test
     try:

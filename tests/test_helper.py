@@ -3,7 +3,7 @@ from typing import Callable, Any, Dict
 import pytest
 
 from eventdispatch import Event, EventDispatch
-from eventdispatch.core import EventDispatchEvent
+from eventdispatch.core import EventDispatchEvent, EventDispatchManager
 
 
 class TestEventHandler:
@@ -18,7 +18,7 @@ class TestEventHandler:
 
 
 def register_handler_for_event(handler, event=None):
-    event_log_count = len(EventDispatch().event_log)
+    event_log_count = len(EventDispatchManager().default_dispatch.event_log)
     handler_count = get_handler_count()
 
     events = [event] if event else []
@@ -29,18 +29,19 @@ def register_handler_for_event(handler, event=None):
 
 
 def register(handler: TestEventHandler, events: [str]):
-    EventDispatch().register(handler.on_event, events)
+    EventDispatchManager().default_dispatch.register(handler.on_event, events)
 
 
 def get_handler_count():
     count = 0
-    for event_name, handlers in EventDispatch().event_handlers.items():
+
+    for event_name, handlers in EventDispatchManager().default_dispatch.event_handlers.items():
         count += len(handlers)
     return count
 
 
 def validate_event_log_count(expected_count: int):
-    assert len(EventDispatch().event_log) == expected_count
+    assert len(EventDispatchManager().default_dispatch.event_log) == expected_count
 
 
 def validate_expected_handler_count(expected_count: int):
@@ -58,9 +59,9 @@ def validate_test_handler_registered_for_event(handler: TestEventHandler, event:
 def validate_handler_registered_for_event(handler: Callable, event: str = None):
     # Check if validating for all events.
     if not event:
-        handlers = EventDispatch().all_event_handlers
+        handlers = EventDispatchManager().default_dispatch.all_event_handlers
     else:
-        handlers = EventDispatch().event_handlers.get(event, [])
+        handlers = EventDispatchManager().default_dispatch.event_handlers.get(event, [])
     assert handler in handlers
 
 

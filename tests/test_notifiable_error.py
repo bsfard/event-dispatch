@@ -1,21 +1,26 @@
 import time
 
 from eventdispatch import NotifiableError, EventDispatch
+from eventdispatch.core import EventDispatchManager
 from test_helper import TestEventHandler, register_handler_for_event, validate_received_event
 
+event_dispatch: EventDispatch
 handler: TestEventHandler
 
 
 def setup_module():
-    EventDispatch().toggle_event_logging(True)
+    global event_dispatch
+
+    event_dispatch = EventDispatchManager().default_dispatch
+    event_dispatch.toggle_event_logging(True)
 
 
 def setup_function():
     global handler
 
-    EventDispatch().clear_event_log()
-    EventDispatch().clear_registered_handlers()
-    EventDispatch().log_event_if_no_handlers = True
+    event_dispatch.clear_event_log()
+    event_dispatch.clear_registered_handlers()
+    event_dispatch.log_event_if_no_handlers = True
 
     handler = TestEventHandler()
 
@@ -25,7 +30,7 @@ def teardown_function():
 
 
 def teardown_module():
-    EventDispatch().toggle_event_logging(False)
+    event_dispatch.toggle_event_logging(False)
 
 
 TEST_ERROR1 = 'error1'

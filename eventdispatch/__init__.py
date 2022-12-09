@@ -2,6 +2,7 @@ from .core import Data as Data
 from .core import Event as Event
 from .core import EventDispatch as EventDispatch
 from .core import EventDispatchEvent as EventDispatchEvent
+from .core import EventDispatchManager as EventDispatchManager
 from .core import InvalidDataError as InvalidDataError
 from .core import InvalidEventError as InvalidEventError
 from .core import MissingKeyError as MissingKeyError

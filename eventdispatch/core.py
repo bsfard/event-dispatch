@@ -14,6 +14,7 @@ class NamespacedEnum(Enum):
     Adds a namespace (optional) to prepend to enum values.  To set namespace, override the "get_namespace(self)"
     to return desired namespace.
     """
+
     def __init__(self, _):
         self.__namespace = self.get_namespace()
 
@@ -406,6 +407,18 @@ class EventDispatchManager:
     @property
     def default_dispatch(self) -> EventDispatch:
         return self.__event_dispatchers['']
+
+    def add_event_dispatch(self, key: str) -> bool:
+        if key not in self.__event_dispatchers:
+            self.__event_dispatchers[key] = EventDispatch()
+            return True
+        return False
+
+    def remove_event_dispatch(self, key: str):
+        if key in self.__event_dispatchers:
+            del self.__event_dispatchers[key]
+            return True
+        return False
 
 
 class InvalidEventError(NotifiableError):

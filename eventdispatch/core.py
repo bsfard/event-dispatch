@@ -357,7 +357,7 @@ class EventDispatch:
         # Replace internal marking for 'all events' with an empty list.
         if events == [self.__ALL_EVENTS]:
             events = []
-        post_event(EventDispatchEvent.HANDLER_REGISTERED, {
+        self.post_event(EventDispatch.to_string_event(EventDispatchEvent.HANDLER_REGISTERED), {
             'events': events,
             'handler': repr(handler)
         })
@@ -366,7 +366,7 @@ class EventDispatch:
         # Replace internal marking for 'all events' with an empty list.
         if events == [self.__ALL_EVENTS]:
             events = []
-        post_event(EventDispatchEvent.HANDLER_UNREGISTERED, {
+        self.post_event(EventDispatch.to_string_event(EventDispatchEvent.HANDLER_UNREGISTERED), {
             'events': events,
             'handler': repr(handler)
         })

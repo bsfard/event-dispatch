@@ -176,19 +176,9 @@ class EventDispatch:
     __ALL_EVENTS = '*'
     __EVENT_LOG_SIZE = 5
 
-    __instance = None
     __logger = logging.getLogger(__name__)
-    __lock = threading.Lock()
-
-    __event_handlers: Dict[str, list[Callable]] = {}
-
-    __event_queue: Queue = Queue()
 
     # --- For testing purposes ------------------------------------------------------------------------------
-    __event_log = deque(maxlen=__EVENT_LOG_SIZE)
-    __log_event: bool = False
-    __log_event_if_no_handlers: bool = False
-
     def toggle_event_logging(self, is_log: bool = False):
         self.__log_event = is_log
 
@@ -222,7 +212,17 @@ class EventDispatch:
 
     def __init__(self, channel: str = ''):
         self.__channel = channel
-        threading.Thread(target=EventDispatch.monitor_event_queue, daemon=True).start()
+        self.__lock = threading.Lock()
+        self.__event_handlers: Dict[str, list[Callable]] = {}
+        self.__event_queue: Queue = Queue()
+
+        # --- For testing purposes ------------------------------------------------------------------------------
+        self.__event_log = deque(maxlen=self.__EVENT_LOG_SIZE)
+        self.__log_event: bool = False
+        self.__log_event_if_no_handlers: bool = False
+        # -------------------------------------------------------------------------------------------------------
+
+        threading.Thread(target=self.monitor_event_queue, daemon=True).start()
 
     def register(self, handler: Callable, events: [str]):
         self.__validate_events(events)
@@ -296,12 +296,11 @@ class EventDispatch:
 
         self.__lock.release()
 
-    @staticmethod
-    def monitor_event_queue():
+    def monitor_event_queue(self):
         while True:
-            thread = EventDispatch.__event_queue.get()
+            thread = self.__event_queue.get()
             thread.start()
-            EventDispatch.__event_queue.task_done()
+            self.__event_queue.task_done()
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:

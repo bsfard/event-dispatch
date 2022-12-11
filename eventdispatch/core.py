@@ -408,15 +408,15 @@ class EventDispatchManager:
     def default_dispatch(self) -> EventDispatch:
         return self.__event_dispatchers['']
 
-    def add_event_dispatch(self, key: str) -> bool:
-        if key not in self.__event_dispatchers:
-            self.__event_dispatchers[key] = EventDispatch()
+    def add_event_dispatch(self, channel: str) -> bool:
+        if channel not in self.__event_dispatchers:
+            self.__event_dispatchers[channel] = EventDispatch(channel)
             return True
         return False
 
-    def remove_event_dispatch(self, key: str):
-        if key in self.__event_dispatchers:
-            del self.__event_dispatchers[key]
+    def remove_event_dispatch(self, channel: str):
+        if channel in self.__event_dispatchers:
+            del self.__event_dispatchers[channel]
             return True
         return False
 

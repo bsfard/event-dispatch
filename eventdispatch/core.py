@@ -113,17 +113,19 @@ def unregister_from_events(handler: Callable[[Event], None], events: [Union[str,
     EventDispatchManager().default_dispatch.unregister(handler, EventDispatch.to_string_events(events))
 
 
-def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any] = None):
+def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any] = None,
+               exclude_handler: Callable[[Event], None] = None):
     """
     Posts an event (with optional payload of info) for which registered listeners (callbacks) can get notified.
     :param event: event name/type (string or Enum or NamespacedEnum) to post
     :param payload: optional dictionary of keyed-values to include with the event
+    :param exclude_handler: optional handler to exclude from getting the event posted
     :return: None
     """
 
     if not event:
         return
-    EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload)
+    EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload, exclude_handler)
 
 
 class NotifiableError(Exception):
@@ -237,7 +239,7 @@ class EventDispatch:
                 is_registered_for_event = True
 
         if is_registered_for_event:
-            self.__post_admin_event__registered(handler, events)
+            self.__post_admin_event_registration(handler, events, is_registered=True)
             self.__log_message_registered(handler, events)
 
     def unregister(self, handler: Callable, events: [str]):
@@ -257,10 +259,10 @@ class EventDispatch:
         self.__lock.release()
 
         if is_unregistered_for_event:
-            self.__post_admin_event__unregistered(handler, events)
+            self.__post_admin_event_registration(handler, events, is_registered=False)
             self.__log_message_unregistered(handler, events)
 
-    def post_event(self, name: str, payload: Dict[str, Any] = None):
+    def post_event(self, name: str, payload: Dict[str, Any] = None, exclude_handler: Callable[[Event], None] = None):
         self.__lock.acquire()
 
         payload = payload if payload else {}
@@ -274,7 +276,7 @@ class EventDispatch:
 
         # Combine handlers and all-event handlers into one unique list (in case some handlers are registered for both).
         for handler in all_event_handlers:
-            if handler not in event_handlers:
+            if handler not in event_handlers and handler != exclude_handler:
                 event_handlers.append(handler)
 
         # Log event posting info.
@@ -352,20 +354,14 @@ class EventDispatch:
         if len(invalid_events) > 0:
             raise InvalidEventError
 
-    def __post_admin_event__registered(self, handler: Callable, events: [str]):
-        # Replace internal marking for 'all events' with an empty list.
-        if events == [self.__ALL_EVENTS]:
-            events = []
-        self.post_event(EventDispatch.to_string_event(EventDispatchEvent.HANDLER_REGISTERED), {
-            'events': events,
-            'handler': repr(handler)
-        })
+    def __post_admin_event_registration(self, handler: Callable, events: [str], is_registered: bool):
+        name = EventDispatchEvent.HANDLER_REGISTERED.namespaced_value if is_registered else \
+            EventDispatchEvent.HANDLER_UNREGISTERED.namespaced_value
 
-    def __post_admin_event__unregistered(self, handler: Callable, events: [str]):
         # Replace internal marking for 'all events' with an empty list.
         if events == [self.__ALL_EVENTS]:
             events = []
-        self.post_event(EventDispatch.to_string_event(EventDispatchEvent.HANDLER_UNREGISTERED), {
+        self.post_event(name, {
             'events': events,
             'handler': repr(handler)
         })
@@ -383,7 +379,7 @@ class EventDispatch:
         self.__logger.debug(message)
 
     def __log_message_posted_event(self, event: Event):
-        message = f"Posted event'{event.name}'"
+        message = f"Posted event '{event.name}'"
         self.__logger.debug(message)
 
 

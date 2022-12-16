@@ -1,0 +1,30 @@
+name: Docker Image Build and Tag Before and After Build 
+
+on:
+  push:
+    branches: [ "jr0013909-#1137" ]
+  pull_request:
+    branches: [ "jr0013909-#1137" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+      
+    - name: Tag branch
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+        git tag before-build
+       
+    - name: Tag branch
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+        git tag after-build

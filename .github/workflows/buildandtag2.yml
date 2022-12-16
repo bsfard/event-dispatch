@@ -1,0 +1,27 @@
+name: Docker Image Build and Tag Before and After Build 
+
+on:
+  push:
+    branches: [ "jr0013909-#1137-2" ]
+  pull_request:
+    branches: [ "jr0013909-#1137-2" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Tag branch
+      run: |
+        git tag before-build
+        
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag my-image-name:$(date +%s)
+       
+    - name: Tag branch
+      run: |
+        git tag after-build
+        run: echo "The Docker Image Build was Successful" 

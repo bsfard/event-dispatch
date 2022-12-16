@@ -24,4 +24,3 @@ jobs:
     - name: Tag branch
       run: |
         git tag after-build
-        run: echo "The Docker Image Build was Successful" 

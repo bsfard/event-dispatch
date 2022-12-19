@@ -26,7 +26,8 @@ service.
 - [To run demo](#to-run-demo)
 - [To install package](#to-install-package)
 - [How to...](#how-to)
-- [Design tips](#design-tips)
+- [Design tips](#design-tipsconsiderations)
+- [Troubleshooting](#troubleshooting)
 
 ## To run demo
 
@@ -60,7 +61,7 @@ eventdispatch@ git+https://github.com/bsfard/event-dispatch.git
 eventdispatch@ git+https://github.com/bsfard/event-dispatch.git@v0.0.4
 ```
 
-## How To
+## How to
 
 - [Receive an event](#receive-an-event)
 - [Register for events](#register-for-events)

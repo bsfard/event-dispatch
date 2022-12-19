@@ -26,7 +26,7 @@ service.
 - [To run demo](#to-run-demo)
 - [To install package](#to-install-package)
 - [How to...](#how-to)
-- [Design tips](#design-tipsconsiderations)
+- [Design tips/considerations](#design-tipsconsiderations)
 - [Troubleshooting](#troubleshooting)
 
 ## To run demo

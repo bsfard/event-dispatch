@@ -16,7 +16,7 @@ def setup_module():
 
 
 def setup_function():
-    global handler
+    global event_dispatch, handler
 
     event_dispatch.clear_event_log()
     event_dispatch.clear_registered_handlers()
@@ -30,6 +30,7 @@ def teardown_function():
 
 
 def teardown_module():
+    global event_dispatch
     event_dispatch.toggle_event_logging(False)
 
 
@@ -68,6 +69,7 @@ def test_notifiable_error__when_error_not_in_payload():
     # Event name is the error type, and payload has a key 'error' with value set to error type.
 
     # Setup
+    global handler
     register_handler_for_event(handler, TEST_ERROR1)
     expected_payload = {
         TEST_KEY: TEST_VALUE,
@@ -91,6 +93,7 @@ def test_notifiable_error__when_error_in_payload():
     # Event name is the error type, and payload has a key 'error' with same value that was set there before.
 
     # Setup
+    global handler
     register_handler_for_event(handler, TEST_ERROR2)
     expected_payload = {
         TEST_KEY: TEST_VALUE,

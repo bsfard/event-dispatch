@@ -149,7 +149,7 @@ class NotifiableError(Exception):
 
 class InvalidDataError(NotifiableError):
     def __init__(self):
-        message = f"Cannot create data object from 'None' data input"
+        message = "Cannot create data object from 'None' data input"
         error = 'invalid_data_input'
         payload = {}
         super().__init__(message, error, payload)

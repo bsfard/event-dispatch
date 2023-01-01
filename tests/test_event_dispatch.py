@@ -21,7 +21,7 @@ def setup_module():
 
 
 def setup_function():
-    global handler1, handler2, all_event_handler
+    global event_dispatch, handler1, handler2, all_event_handler
 
     event_dispatch.clear_event_log()
     event_dispatch.clear_registered_handlers()
@@ -37,6 +37,7 @@ def teardown_function():
 
 
 def teardown_module():
+    global event_dispatch
     event_dispatch.toggle_event_logging(False)
 
 
@@ -45,6 +46,7 @@ def test_register__when_not_registered():
     # Handler is registered.
 
     # Setup
+    global handler1
     test_event = 'test_event'
 
     # Test
@@ -61,6 +63,7 @@ def test_register__when_registered_for_different_event():
     # Handler is now registered for both events.
 
     # Setup
+    global handler1
     previous_event = 'previous_event'
     test_event = 'test_event'
     register_handler_for_event(handler1, previous_event)
@@ -79,6 +82,7 @@ def test_register__when_already_registered_for_event():
     # Handler is still registered for event, and only once (nothing is changed).
 
     # Setup
+    global handler1
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
 
@@ -96,6 +100,7 @@ def test_register__when_multiple_events():
     # Handler is registered for all events being registered in one call.
 
     # Setup
+    global handler1
     test_event1 = 'test_event1'
     test_event2 = 'test_event2'
 
@@ -114,7 +119,7 @@ def test_register__when_for_all_events_when_not_yet_registered():
     # Handler is registered for "all events".
 
     # Setup
-    # (none)
+    global all_event_handler
 
     # Test
     register(all_event_handler, [])
@@ -130,6 +135,7 @@ def test_register__when_for_all_events_when_registered_for_event():
     # Handler is still registered for event, and now also registered for "all events".
 
     # Setup
+    global handler1, all_event_handler
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
 
@@ -148,6 +154,7 @@ def test_register__confirm_registration_event_is_posted():
     # Event is posted when handler is registered, with proper payload.
 
     # Setup
+    global handler1, all_event_handler
     register_handler_for_event(all_event_handler)
     time.sleep(0.1)
     validate_received_events(all_event_handler, [EventDispatchEvent.HANDLER_REGISTERED],
@@ -163,11 +170,28 @@ def test_register__confirm_registration_event_is_posted():
                              is_ignore_registration_event=False)
 
 
+def test_register__when_event_with_wildcard__in_end():
+    # Objective:
+
+    # Setup
+    global handler1
+    test_event = 'test*'
+
+    # Test
+    register(handler1, [test_event])
+
+    # Verify
+    validate_expected_handler_count(1)
+    validate_test_handler_registered_for_event(handler1, test_event)
+    validate_event_log_count(1)
+
+
 def test_post__when_no_registered_handlers_for_event():
     # Objective:
     # No event is propagated.
 
     # Setup
+    global event_dispatch
     test_event = 'test_event'
     event_dispatch.log_event_if_no_handlers = False
     validate_event_log_count(0)
@@ -186,6 +210,7 @@ def test_post_event__when_no_registered_handlers_but_have_all_event_registered_h
     # All-event registered handler received the event.
 
     # Setup
+    global all_event_handler
     test_event = 'test_event'
     register_handler_for_event(all_event_handler)
 
@@ -204,6 +229,7 @@ def test_post_event_when_registered_handler_for_event():
     # Registered handler received the event.
 
     # Setup
+    global handler1
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
 
@@ -222,6 +248,7 @@ def test_post_event__when_registered_handler_and_different_all_event_registered_
     # Both handlers received events.
 
     # Setup
+    global handler1, all_event_handler
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
     register_handler_for_event(all_event_handler)
@@ -242,6 +269,7 @@ def test_post_event__when_same_registered_and_all_event_registered_handlers():
     # Registered handler received the event.
 
     # Setup
+    global handler1
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
     register_handler_for_event(handler1)
@@ -263,6 +291,7 @@ def test_post_event__when_two_registered_handlers_for_same_event():
     # Two events are propagated (one to each registered handler).
 
     # Setup
+    global handler1, handler2
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
     register_handler_for_event(handler2, test_event)
@@ -282,6 +311,7 @@ def test_post_event__when_registered_handler_for_different_event():
     # No event is propagated.
 
     # Setup
+    global handler1
     test_event1 = 'test_event1'
     register_handler_for_event(handler1, test_event1)
 
@@ -300,6 +330,7 @@ def test_unregister__when_not_registered():
     # Previous handlers remain intact.
 
     # Setup
+    global handler1, handler2
     test_event = 'test_event'
     register_handler_for_event(handler1, test_event)
 
@@ -334,6 +365,7 @@ def test_unregister__when_registered_for_only_one_of_the_events():
     # Registration that exists for event is removed.
 
     # Setup
+    global handler1
     test_event1 = 'test_event1'
     test_event2 = 'test_event2'
     register(handler1, [test_event1, test_event2])
@@ -354,6 +386,7 @@ def test_unregister__when_registered_for_different_event():
     # Registration for the different event is intact.
 
     # Setup
+    global handler1
     test_event1 = 'test_event1'
     register(handler1, [test_event1])
 
@@ -373,6 +406,7 @@ def test_unregister__confirm_unregistration_event_is_posted():
     # Event is posted when handler is unregistered, with proper payload.
 
     # Setup
+    global handler1, all_event_handler
     test_event = 'test_event'
     register_handler_for_event(all_event_handler)
     register(handler1, [test_event])
@@ -388,8 +422,10 @@ def test_unregister__confirm_unregistration_event_is_posted():
 
 
 def unregister(handler: TestEventHandler, events: [str]):
+    global event_dispatch
     event_dispatch.unregister(handler.on_event, events)
 
 
 def post_event(event: str, payload: dict[str: Any] = None):
+    global event_dispatch
     event_dispatch.post_event(event, payload)

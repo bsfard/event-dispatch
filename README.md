@@ -3,7 +3,7 @@
 A mechanism to generate, register for, and receive events in your app without the need of a local or remote messaging
 service.
 
-### Key points
+## Key points
 
 - Events are generate and received within your app (process) only
 - Events can contain an optional payload (key/value dictionary)
@@ -15,14 +15,16 @@ service.
   exceptions are raised
 - You can use a ```Properties``` object to store (and share) global-level info within your app
 
-### High-level steps
+## High-level steps
 
 1. Implement a method that will be called when desired events occur
 2. Register for desired events
 3. Generate an event
 
-## Sections
+## Python Versions
+Tested with: 3.7, 3.8, 3.9, 3.10, 3.11
 
+## Sections
 - [To run demo](#to-run-demo)
 - [To install package](#to-install-package)
 - [How to...](#how-to)

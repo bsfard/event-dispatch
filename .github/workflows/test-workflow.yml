@@ -1,8 +1,7 @@
-name: Python Package Test Workflow
+name: Event-Dispatch Package (Test)
 
 on:
   push:
-    branches:
 
 jobs:
 

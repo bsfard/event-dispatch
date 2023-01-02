@@ -6,13 +6,16 @@ from eventdispatch import Event, EventDispatch
 from eventdispatch.core import EventDispatchEvent, EventDispatchManager
 
 
-class TestEventHandler:
+class EventHandler:
     def __init__(self):
         self.received_events = {}
 
     def on_event(self, event: Event):
         if event.name in self.received_events:
-            pytest.fail('Same event received again')
+            message = f'Same event received again'
+            message += f'\nEvent1: {self.received_events[event.name].dict}'
+            message += f'\nEvent2: {event.dict}'
+            pytest.fail(message)
 
         self.received_events[event.name] = event
 
@@ -28,7 +31,7 @@ def register_handler_for_event(handler, event=None):
     validate_event_log_count(event_log_count + 1)
 
 
-def register(handler: TestEventHandler, events: [str]):
+def register(handler: EventHandler, events: [str]):
     EventDispatchManager().default_dispatch.register(handler.on_event, events)
 
 
@@ -48,11 +51,11 @@ def validate_expected_handler_count(expected_count: int):
     assert get_handler_count() == expected_count
 
 
-def validate_handler_registered_for_all_events(handler: TestEventHandler):
+def validate_handler_registered_for_all_events(handler: EventHandler):
     validate_test_handler_registered_for_event(handler, None)
 
 
-def validate_test_handler_registered_for_event(handler: TestEventHandler, event: str = None):
+def validate_test_handler_registered_for_event(handler: EventHandler, event: str = None):
     validate_handler_registered_for_event(handler.on_event, event)
 
 
@@ -65,7 +68,7 @@ def validate_handler_registered_for_event(handler: Callable, event: str = None):
     assert handler in handlers
 
 
-def validate_received_events(handler: TestEventHandler, expected_events: [Any], is_ignore_registration_event=True):
+def validate_received_events(handler: EventHandler, expected_events: [Any], is_ignore_registration_event=True):
     expected_events = EventDispatch.to_string_events(expected_events)
     registration_event = EventDispatch.to_string_event(EventDispatchEvent.HANDLER_REGISTERED)
     if is_ignore_registration_event:
@@ -84,7 +87,7 @@ def validate_received_events(handler: TestEventHandler, expected_events: [Any], 
         handler.received_events.pop(event)
 
 
-def validate_received_event(handler: TestEventHandler, expected_event: Any, expected_payload: Dict[str, Any]):
+def validate_received_event(handler: EventHandler, expected_event: Any, expected_payload: Dict[str, Any]):
     expected_event = EventDispatch.to_string_event(expected_event)
     for name, event in handler.received_events.items():
         if name == expected_event:

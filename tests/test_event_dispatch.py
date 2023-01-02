@@ -3,14 +3,14 @@ from typing import Any
 
 from eventdispatch import EventDispatch
 from eventdispatch.core import EventDispatchEvent, EventDispatchManager
-from test_helper import TestEventHandler, validate_test_handler_registered_for_event, \
+from helper import EventHandler, validate_test_handler_registered_for_event, \
     validate_handler_registered_for_all_events, validate_event_log_count, validate_expected_handler_count, \
     register_handler_for_event, register, validate_received_events
 
 event_dispatch: EventDispatch
-handler1: TestEventHandler
-handler2: TestEventHandler
-all_event_handler: TestEventHandler
+handler1: EventHandler
+handler2: EventHandler
+all_event_handler: EventHandler
 
 
 def setup_module():
@@ -27,9 +27,9 @@ def setup_function():
     event_dispatch.clear_registered_handlers()
     event_dispatch.log_event_if_no_handlers = True
 
-    handler1 = TestEventHandler()
-    handler2 = TestEventHandler()
-    all_event_handler = TestEventHandler()
+    handler1 = EventHandler()
+    handler2 = EventHandler()
+    all_event_handler = EventHandler()
 
 
 def teardown_function():
@@ -408,8 +408,8 @@ def test_unregister__confirm_unregistration_event_is_posted():
     # Setup
     global handler1, all_event_handler
     test_event = 'test_event'
-    register_handler_for_event(all_event_handler)
     register(handler1, [test_event])
+    register_handler_for_event(all_event_handler)
 
     # Test
     unregister(handler1, [test_event])
@@ -421,7 +421,7 @@ def test_unregister__confirm_unregistration_event_is_posted():
                              is_ignore_registration_event=False)
 
 
-def unregister(handler: TestEventHandler, events: [str]):
+def unregister(handler: EventHandler, events: [str]):
     global event_dispatch
     event_dispatch.unregister(handler.on_event, events)
 

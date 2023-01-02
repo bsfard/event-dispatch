@@ -2,10 +2,10 @@ import time
 
 from eventdispatch import NotifiableError, EventDispatch
 from eventdispatch.core import EventDispatchManager
-from test_helper import TestEventHandler, register_handler_for_event, validate_received_event
+from helper import EventHandler, register_handler_for_event, validate_received_event
 
 event_dispatch: EventDispatch
-handler: TestEventHandler
+handler: EventHandler
 
 
 def setup_module():
@@ -22,7 +22,7 @@ def setup_function():
     event_dispatch.clear_registered_handlers()
     event_dispatch.log_event_if_no_handlers = True
 
-    handler = TestEventHandler()
+    handler = EventHandler()
 
 
 def teardown_function():
@@ -43,7 +43,7 @@ TEST_ERROR_MESSAGE = 'test error message'
 SOME_OTHER_ERROR = 'some_other_error'
 
 
-class TestErrorNotInPayloadError(NotifiableError):
+class ErrorNotInPayloadError(NotifiableError):
     def __init__(self):
         message = TEST_ERROR_MESSAGE
         error = TEST_ERROR1
@@ -53,7 +53,7 @@ class TestErrorNotInPayloadError(NotifiableError):
         super().__init__(message, error, payload)
 
 
-class TestErrorInPayloadError(NotifiableError):
+class ErrorInPayloadError(NotifiableError):
     def __init__(self):
         message = TEST_ERROR_MESSAGE
         error = TEST_ERROR2
@@ -79,8 +79,8 @@ def test_notifiable_error__when_error_not_in_payload():
 
     # Test
     try:
-        raise TestErrorNotInPayloadError()
-    except TestErrorNotInPayloadError:
+        raise ErrorNotInPayloadError()
+    except ErrorNotInPayloadError:
         pass
 
     # Verify
@@ -103,8 +103,8 @@ def test_notifiable_error__when_error_in_payload():
 
     # Test
     try:
-        raise TestErrorInPayloadError()
-    except TestErrorInPayloadError:
+        raise ErrorInPayloadError()
+    except ErrorInPayloadError:
         pass
 
     # Verify

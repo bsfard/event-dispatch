@@ -1,5 +1,5 @@
 import time
-from typing import Any
+from typing import Any, Dict
 
 from eventdispatch import EventDispatch
 from eventdispatch.core import EventDispatchEvent, EventDispatchManager
@@ -426,6 +426,6 @@ def unregister(handler: EventHandler, events: [str]):
     event_dispatch.unregister(handler.on_event, events)
 
 
-def post_event(event: str, payload: dict[str: Any] = None):
+def post_event(event: str, payload: Dict[str, Any] = None):
     global event_dispatch
     event_dispatch.post_event(event, payload)

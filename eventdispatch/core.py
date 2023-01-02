@@ -6,7 +6,7 @@ import traceback
 from collections import deque
 from enum import Enum
 from queue import Queue
-from typing import Callable, Dict, Any, Union
+from typing import Callable, Dict, Any, Union, List
 
 
 class NamespacedEnum(Enum):
@@ -200,7 +200,7 @@ class EventDispatch:
         self.__log_event_if_no_handlers = value
 
     @property
-    def event_handlers(self) -> Dict[str, list[Callable]]:
+    def event_handlers(self) -> Dict[str, List[Callable]]:
         return self.__event_handlers
 
     @property
@@ -208,14 +208,14 @@ class EventDispatch:
         return self.__event_handlers.get(self.__ALL_EVENTS, [])
 
     def clear_registered_handlers(self):
-        self.__event_handlers: Dict[str, list[Callable]] = {}
+        self.__event_handlers: Dict[str, List[Callable]] = {}
 
     # -------------------------------------------------------------------------------------------------------
 
     def __init__(self, channel: str = ''):
         self.__channel = channel
         self.__lock = threading.Lock()
-        self.__event_handlers: Dict[str, list[Callable]] = {}
+        self.__event_handlers: Dict[str, List[Callable]] = {}
         self.__event_queue: Queue = Queue()
 
         # --- For testing purposes ------------------------------------------------------------------------------

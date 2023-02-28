@@ -210,6 +210,29 @@ class EventDispatch:
     def clear_registered_handlers(self):
         self.__event_handlers: Dict[str, List[Callable]] = {}
 
+    @property
+    def serialized_event_handlers(self) -> Dict[str, Any]:
+        serialized_handlers = {}
+        for event, handlers in self.__event_handlers.items():
+            str_handlers = []
+            for handler in handlers:
+                str_handlers.append(self.prune_handler(str(handler)))
+            serialized_handlers[event] = str_handlers
+        return serialized_handlers
+
+    @staticmethod
+    def prune_handler(handler_string: str) -> str:
+        if handler_string.startswith('<function'):
+            x = handler_string.split(' at ')[0]
+            x = x.split('<function ')
+            return x[1]
+
+        if handler_string.startswith('<bound method'):
+            x = handler_string.split(' of ')[0]
+            x = x.split('<bound method ')
+            return x[1]
+        return handler_string
+
     # -------------------------------------------------------------------------------------------------------
 
     def __init__(self, channel: str = ''):

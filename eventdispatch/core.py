@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import threading
@@ -75,6 +76,11 @@ class Event(Data):
     @property
     def time(self) -> float:
         return self.get('time')
+
+    @property
+    def time_formatted(self) -> str:
+        t = datetime.datetime.fromtimestamp(self.get('time'))
+        return t.strftime('%Y-%m-%d %H:%M:%S')
 
     @property
     def name(self) -> str:

@@ -150,6 +150,12 @@ class NotifiableError(Exception):
             payload['message'] = message
 
         super().__init__(message)
+
+        self.message = message
+        self.error = error
+        self.payload = payload
+        self.exception = exception
+
         post_event(error, payload)
 
 

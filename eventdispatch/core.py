@@ -9,6 +9,8 @@ from enum import Enum
 from queue import Queue
 from typing import Callable, Dict, Any, Union, List
 
+from wrapt import synchronized
+
 from eventdispatch.decorators import singleton
 
 
@@ -52,7 +54,6 @@ class Data:
 
 
 class Event(Data):
-    __lock = threading.Lock()
     __id = 0
 
     def __init__(self, name: str, payload: Dict[str, Any] = None):
@@ -64,11 +65,10 @@ class Event(Data):
         })
 
     @staticmethod
+    @synchronized
     def generate_id():
-        with Event.__lock:
-            Event.__id += 1
-            event_id = Event.__id
-        return event_id
+        Event.__id += 1
+        return Event.__id
 
     @property
     def id(self) -> int:
@@ -250,7 +250,6 @@ class EventDispatch:
 
     def __init__(self, channel: str = ''):
         self.__channel = channel
-        self.__lock = threading.Lock()
         self.__event_handlers: Dict[str, List[Callable]] = {}
         self.__event_queue: Queue = Queue()
 
@@ -267,7 +266,7 @@ class EventDispatch:
 
         is_registered_for_event = False
 
-        with self.__lock:
+        with synchronized(self):
             if not events:
                 # Registering for all events.
                 events = [self.__ALL_EVENTS]
@@ -285,7 +284,7 @@ class EventDispatch:
 
         is_unregistered_for_event = False
 
-        with self.__lock:
+        with synchronized(self):
             if not events:
                 # Unregistering from all events.
                 events = [self.__ALL_EVENTS]
@@ -299,7 +298,7 @@ class EventDispatch:
             self.__log_message_unregistered(handler, events)
 
     def post_event(self, name: str, payload: Dict[str, Any] = None, exclude_handler: Callable[[Event], None] = None):
-        with self.__lock:
+        with synchronized(self):
             payload = payload if payload else {}
             event = Event(name, payload)
 

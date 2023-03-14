@@ -65,10 +65,9 @@ class Event(Data):
 
     @staticmethod
     def generate_id():
-        Event.__lock.acquire()
-        Event.__id += 1
-        event_id = Event.__id
-        Event.__lock.release()
+        with Event.__lock:
+            Event.__id += 1
+            event_id = Event.__id
         return event_id
 
     @property
@@ -266,14 +265,16 @@ class EventDispatch:
     def register(self, handler: Callable, events: [str]):
         self.__validate_events(events)
 
-        if not events:
-            # Registering for all events.
-            events = [self.__ALL_EVENTS]
-
         is_registered_for_event = False
-        for event in events:
-            if self.__register_for_event(handler, event):
-                is_registered_for_event = True
+
+        with self.__lock:
+            if not events:
+                # Registering for all events.
+                events = [self.__ALL_EVENTS]
+
+            for event in events:
+                if self.__register_for_event(handler, event):
+                    is_registered_for_event = True
 
         if is_registered_for_event:
             self.__post_admin_event_registration(handler, events, is_registered=True)
@@ -282,58 +283,52 @@ class EventDispatch:
     def unregister(self, handler: Callable, events: [str]):
         self.__validate_events(events)
 
-        self.__lock.acquire()
-
-        if not events:
-            # Unregistering from all events.
-            events = [self.__ALL_EVENTS]
-
         is_unregistered_for_event = False
-        for event in events:
-            if self.__unregister_from_event(handler, event):
-                is_unregistered_for_event = True
 
-        self.__lock.release()
+        with self.__lock:
+            if not events:
+                # Unregistering from all events.
+                events = [self.__ALL_EVENTS]
+
+            for event in events:
+                if self.__unregister_from_event(handler, event):
+                    is_unregistered_for_event = True
 
         if is_unregistered_for_event:
             self.__post_admin_event_registration(handler, events, is_registered=False)
             self.__log_message_unregistered(handler, events)
 
     def post_event(self, name: str, payload: Dict[str, Any] = None, exclude_handler: Callable[[Event], None] = None):
-        self.__lock.acquire()
+        with self.__lock:
+            payload = payload if payload else {}
+            event = Event(name, payload)
 
-        payload = payload if payload else {}
-        event = Event(name, payload)
+            # Get handlers for event.
+            event_handlers = self.__event_handlers.get(name, [])
 
-        # Get handlers for event.
-        event_handlers = self.__event_handlers.get(name, [])
+            # Get all-event handlers.
+            all_event_handlers = self.__event_handlers.get(self.__ALL_EVENTS, [])
 
-        # Get all-event handlers.
-        all_event_handlers = self.__event_handlers.get(self.__ALL_EVENTS, [])
+            # Combine handlers and all-event handlers into one unique list (in case some handlers are registered for both).
+            for handler in all_event_handlers:
+                if handler not in event_handlers and handler != exclude_handler:
+                    event_handlers.append(handler)
 
-        # Combine handlers and all-event handlers into one unique list (in case some handlers are registered for both).
-        for handler in all_event_handlers:
-            if handler not in event_handlers and handler != exclude_handler:
-                event_handlers.append(handler)
+            # Log event posting info.
+            if self.__log_event and (event_handlers or self.__log_event_if_no_handlers):
+                self.__event_log.append(event)
 
-        # Log event posting info.
-        if self.__log_event and (event_handlers or self.__log_event_if_no_handlers):
-            self.__event_log.append(event)
+            # Skip notifying if there's no handler registered for event.
+            if not event_handlers:
+                self.__log_message_not_propagating_event(name)
+                return
 
-        # Skip notifying if there's no handler registered for event.
-        if not event_handlers:
-            self.__log_message_not_propagating_event(name)
-            self.__lock.release()
-            return
+            # Notify all handlers using threads (so handlers don't need to implement their own thread).
+            for handler in event_handlers:
+                # Add thread to notify handler onto event queue (so event order would be maintained per handler).
+                self.__event_queue.put(threading.Thread(target=handler, args=[event]))
 
-        # Notify all handlers using threads (so handlers don't need to implement their own thread).
-        for handler in event_handlers:
-            # Add thread to notify handler onto event queue (so event order would be maintained per handler).
-            self.__event_queue.put(threading.Thread(target=handler, args=[event]))
-
-        self.__log_message_posted_event(event)
-
-        self.__lock.release()
+            self.__log_message_posted_event(event)
 
     def monitor_event_queue(self):
         while True:

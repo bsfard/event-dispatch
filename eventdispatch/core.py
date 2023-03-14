@@ -9,6 +9,8 @@ from enum import Enum
 from queue import Queue
 from typing import Callable, Dict, Any, Union, List
 
+from eventdispatch.decorators import singleton
+
 
 class NamespacedEnum(Enum):
     """
@@ -418,17 +420,13 @@ class EventDispatch:
         self.__logger.debug(message)
 
 
+@singleton
 class EventDispatchManager:
-    __instance = None
-    __event_dispatchers: Dict[str, EventDispatch] = {}
-
-    def __new__(cls):
-        if not cls.__instance:
-            cls.__instance = super().__new__(cls)
-
-            # Create default event dispatcher (for local events, as well as events without a channel).
-            cls.__event_dispatchers[''] = EventDispatch()
-        return cls.__instance
+    def __init__(self):
+        # Create default event dispatcher (for local events, as well as events without a channel).
+        self.__event_dispatchers: Dict[str, EventDispatch] = {
+            '': EventDispatch()
+        }
 
     @property
     def event_dispatchers(self) -> Dict[str, EventDispatch]:

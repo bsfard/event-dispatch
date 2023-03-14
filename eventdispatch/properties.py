@@ -1,16 +1,13 @@
 from typing import Any
 
 from eventdispatch import NotifiableError
+from eventdispatch.decorators import singleton
 
 
+@singleton
 class Properties:
-    __instance = None
-    __properties = {}
-
-    def __new__(cls):
-        if not cls.__instance:
-            cls.__instance = super().__new__(cls)
-        return cls.__instance
+    def __init__(self):
+        self.__properties = {}
 
     @staticmethod
     def has(property_name: str) -> bool:

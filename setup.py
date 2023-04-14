@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='eventdispatch',
-    version='0.0.4',
+    version='0.0.5',
     author='Ben Sfard',
     author_email='bsfard@gmail.com',
     url='https://github.com/bsfard/event-dispatch',

@@ -22,9 +22,11 @@ service.
 3. Generate an event
 
 ## Python Versions
+
 Tested with: 3.7, 3.8, 3.9, 3.10, 3.11
 
 ## Sections
+
 - [To run demo](#to-run-demo)
 - [To install package](#to-install-package)
 - [How to...](#how-to)
@@ -48,7 +50,7 @@ PYTHONPATH=../ python run_workers
 pip install git+https://github.com/bsfard/event-dispatch.git
 
 # Specific version
-pip install git+https://github.com/bsfard/event-dispatch.git@v0.0.4
+pip install git+https://github.com/bsfard/event-dispatch.git@v0.0.6
 ```
 
 ### using requirements file
@@ -60,7 +62,7 @@ pip install git+https://github.com/bsfard/event-dispatch.git@v0.0.4
 eventdispatch@ git+https://github.com/bsfard/event-dispatch.git
 
 # Specific version
-eventdispatch@ git+https://github.com/bsfard/event-dispatch.git@v0.0.4
+eventdispatch@ git+https://github.com/bsfard/event-dispatch.git@v0.0.6
 ```
 
 ## How to
@@ -173,16 +175,16 @@ post_event(MyEvents.EVENT1)
 from eventdispatch import Properties, PropertyNotSetError
 
 # Set property (that cannot be modified)
-Properties.set('MY_PROPERTY', 100)
+Properties().set('MY_PROPERTY', 100)
 
 # Set property (that will not be set/changed if already set)
-Properties.set('ANOTHER_PROPERTY', 100, is_skip_if_exists=True)
+Properties().set('ANOTHER_PROPERTY', 100, is_skip_if_exists=True)
 
 # Set property (that can be modified)
-Properties.set('ANOTHER_PROPERTY', 100, is_mutable=True)
+Properties().set('ANOTHER_PROPERTY', 100, is_mutable=True)
 
 try:
-    my_property = Properties.get('MY_PROPERTY')
+    my_property = Properties().get('MY_PROPERTY')
 except PropertyNotSetError:
     print('Occurs if you forgot to set property before accessing it')
 

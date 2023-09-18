@@ -57,6 +57,9 @@ class Event(Data):
     __id = 0
 
     def __init__(self, name: str, payload: Dict[str, Any] = None):
+        if not name:
+            raise InvalidEventError([name])
+
         super(Event, self).__init__({
             'id': Event.generate_id(),
             'time': time.time(),
@@ -135,6 +138,17 @@ def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any
     EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload, exclude_handler)
 
 
+def map_events(events_to_map: [Event], event_to_post: Event, reset: bool = False):
+    """
+    Maps an event to be posted when all specified events occur.
+    :param events_to_map: list of Event objects (event name and payload) to be watched
+    :param event_to_post: Event object (event name and payload) to be posted when all watched events occur
+    :param reset: (unused at this time)
+    :return:
+    """
+    EventDispatchManager().default_dispatch.map_events(events_to_map, event_to_post, reset)
+
+
 class NotifiableError(Exception):
     """Base error that posts event for this error"""
 
@@ -185,6 +199,17 @@ class EventDispatchEvent(NamespacedEnum):
 
     def get_namespace(self) -> str:
         return 'event_dispatch'
+
+
+class EventMapper:
+    def map_events(self, events_to_map: [Event], event_to_post: Event, reset: bool = False):
+        pass
+
+    def unregister_from_events(self):
+        pass
+
+    def on_event(self, event: Event):
+        pass
 
 
 class EventDispatch:
@@ -252,6 +277,7 @@ class EventDispatch:
         self.__channel = channel
         self.__event_handlers: Dict[str, List[Callable]] = {}
         self.__event_queue: Queue = Queue()
+        self.__event_mapper = None
 
         # --- For testing purposes ------------------------------------------------------------------------------
         self.__event_log = deque(maxlen=self.__EVENT_LOG_SIZE)
@@ -334,6 +360,19 @@ class EventDispatch:
             thread = self.__event_queue.get()
             thread.start()
             self.__event_queue.task_done()
+
+    def set_event_map_manager(self, event_mapper: EventMapper):
+        if self.__event_mapper:
+            # Unregister current mapper from receiving events (if any) for which it had registered.
+            self.__event_mapper.unregister_from_events()
+
+        # Set new event mapper.
+        self.__event_mapper = event_mapper
+
+    def map_events(self, events_to_map: [Event], event_to_post: Event, reset: bool = False):
+        if not self.__event_mapper:
+            self.__event_mapper = EventMapManager(self)
+        self.__event_mapper.map_events(events_to_map, event_to_post, reset)
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:
@@ -451,3 +490,164 @@ class InvalidEventError(NotifiableError):
             'events': events
         }
         super().__init__(message, error, payload)
+
+
+class EventMapEvent(NamespacedEnum):
+    MAPPING_CREATED = 'mapping_created'
+    MAPPING_TRIGGERED = 'mapping_triggered'
+    MAPPING_REMOVED = 'mapping_removed'
+
+    def get_namespace(self) -> str:
+        return 'event_map'
+
+
+class DuplicateMappingError(NotifiableError):
+    def __init__(self, events_to_map: [Event], event_to_post: Event):
+        message = f"Mapping for events provided already exists."
+        error = 'duplicate_mapping'
+        payload = {
+            'events_to_map': events_to_map,
+            'event_to_post': event_to_post
+        }
+        super().__init__(message, error, payload)
+
+
+class InvalidMappingEventsError(NotifiableError):
+    def __init__(self, events_to_map: [Event], event_to_post: Event):
+        message = f"Invalid events provided for event mapping."
+        error = 'invalid_events'
+        payload = {
+            'events_to_map': events_to_map,
+            'event_to_post': event_to_post
+        }
+        super().__init__(message, error, payload)
+
+
+class MappingNotFoundError(NotifiableError):
+    def __init__(self, key: str):
+        message = f"Mapping not found for key: {key}"
+        error = 'mapping_not_found'
+        payload = {
+            'key': key
+        }
+        super().__init__(message, error, payload)
+
+
+class EventMap:
+    def __init__(self, event_dispatch: EventDispatch, events_to_map: [Event], event_to_post: Event, key: str,
+                 reset: bool = False):
+        if not events_to_map or not event_to_post or not any(events_to_map):
+            raise InvalidMappingEventsError(events_to_map, event_to_post)
+        self.__event_dispatch = event_dispatch
+        self.__events_to_watch = {event.name: event.payload for event in events_to_map}
+        self.__mapped_events = [event.name for event in events_to_map]
+        self.__event_to_post = event_to_post
+        self.__key = key
+
+        self.__reset = reset
+        # TODO: for reset, need to persist original events to map, and clone that each time we need to reset.
+        # TODO: Update to also map for specific payload keys/values
+
+        self.__event_dispatch.register(self.on_event, self.__mapped_events)
+
+    @property
+    def events_to_watch(self) -> [str]:
+        return self.__events_to_watch
+
+    @property
+    def events_to_map(self) -> [str]:
+        return self.__mapped_events
+
+    @property
+    def event_to_post(self) -> str:
+        return self.__event_to_post.name
+
+    @synchronized
+    def on_event(self, event: Event):
+        try:
+            # Check if event is being watched.
+            payload_to_watch = self.__events_to_watch[event.name]
+
+            # Check event payload for matching keys and values from payload being watched.
+            for expected_key, expected_value in payload_to_watch.items():
+                try:
+                    value = event.payload.get(expected_key)
+                    if value != expected_value:
+                        return
+                except KeyError:
+                    # Event does not have expected payload to watch.
+                    return
+        except KeyError:
+            # Not event/payload that is being watched, or event already occurred (and was removed from watch list).
+            return
+
+        # Expected keys are present, and expected values confirmed.  Event is expected.
+        del self.__events_to_watch[event.name]
+
+        # Post mapped event if all expected events have been received.
+        if not self.__events_to_watch:
+            self.__event_dispatch.post_event(self.__event_to_post.name, self.__event_to_post.payload)
+            self.stop()
+            # TODO: Update to also post event with specified payload.
+
+    def stop(self):
+        self.__event_dispatch.unregister(self.on_event, self.__mapped_events)
+        self.__event_dispatch.post_event(EventMapEvent.MAPPING_TRIGGERED.namespaced_value, {'key': self.__key})
+
+
+class EventMapManager(EventMapper):
+    def __init__(self, event_dispatch: EventDispatch):
+        self.__event_maps = {}
+        self.__event_dispatch = event_dispatch
+        event_dispatch.register(self.on_event, [EventMapEvent.MAPPING_TRIGGERED.namespaced_value])
+
+    @property
+    def event_maps(self) -> Dict[str, Any]:
+        return self.__event_maps
+
+    def map_events(self, events_to_map: [Event], event_to_post: Event, reset: bool = False):
+        if not events_to_map or not event_to_post:
+            raise InvalidMappingEventsError(events_to_map, event_to_post)
+
+        key = self.build_key(events_to_map, event_to_post)
+
+        # Check if event map was already requested.
+        if key in self.__event_maps:
+            raise DuplicateMappingError(events_to_map, event_to_post)
+
+        # Create and store event map.
+        self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key, reset)
+
+        self.__event_dispatch.post_event(EventMapEvent.MAPPING_CREATED.namespaced_value, {
+            'events_to_map': events_to_map,
+            'event_to_post': event_to_post,
+            'reset': reset
+        })
+
+    def remove_event_map_by_key(self, key: str):
+        try:
+            event_map = self.__event_maps.pop(key)
+            self.__event_dispatch.post_event(EventMapEvent.MAPPING_REMOVED.namespaced_value, {
+                'events_to_map': event_map.events_to_map,
+                'event_to_post': event_map.event_to_post,
+            })
+        except KeyError:
+            raise MappingNotFoundError(key)
+
+    def on_event(self, event: Event):
+        if event.name != EventMapEvent.MAPPING_TRIGGERED.namespaced_value:
+            return
+
+        key = event.payload.get('key')
+        try:
+            self.remove_event_map_by_key(key)
+        except MappingNotFoundError:
+            pass
+
+    def unregister_from_events(self):
+        self.__event_dispatch.unregister(self.on_event, [EventMapEvent.MAPPING_TRIGGERED])
+
+    @staticmethod
+    def build_key(events_to_map: [Event], event_to_post: Event) -> str:
+        to_watch = ','.join([event.name for event in events_to_map])
+        return f'{to_watch}->{event_to_post.name}'

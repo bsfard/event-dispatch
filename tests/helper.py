@@ -2,8 +2,7 @@ from typing import Callable, Any, Dict
 
 import pytest
 
-from eventdispatch import Event, EventDispatch
-from eventdispatch.core import EventDispatchEvent, EventDispatchManager
+from eventdispatch.core import Event, EventDispatch, EventDispatchEvent, EventDispatchManager
 
 
 class EventHandler:
@@ -20,7 +19,7 @@ class EventHandler:
         self.received_events[event.name] = event
 
 
-def register_handler_for_event(handler, event=None):
+def register_handler_for_event(handler, event: str = None):
     event_log_count = len(EventDispatchManager().default_dispatch.event_log)
     handler_count = get_handler_count()
 
@@ -43,8 +42,12 @@ def get_handler_count():
     return count
 
 
+def get_event_log_count() -> int:
+    return len(EventDispatchManager().default_dispatch.event_log)
+
+
 def validate_event_log_count(expected_count: int):
-    assert len(EventDispatchManager().default_dispatch.event_log) == expected_count
+    assert get_event_log_count() == expected_count
 
 
 def validate_expected_handler_count(expected_count: int):
@@ -59,13 +62,24 @@ def validate_test_handler_registered_for_event(handler: EventHandler, event: str
     validate_handler_registered_for_event(handler.on_event, event)
 
 
+def validate_test_handler_not_registered_for_event(handler: EventHandler, event: str = None):
+    validate_handler_not_registered_for_event(handler.on_event, event)
+
+
 def validate_handler_registered_for_event(handler: Callable, event: str = None):
+    assert handler in get_registered_handlers_for_event(event)
+
+
+def validate_handler_not_registered_for_event(handler: Callable, event: str = None):
+    assert handler not in get_registered_handlers_for_event(event)
+
+
+def get_registered_handlers_for_event(event: str = None) -> [Callable]:
     # Check if validating for all events.
     if not event:
-        handlers = EventDispatchManager().default_dispatch.all_event_handlers
+        return EventDispatchManager().default_dispatch.all_event_handlers
     else:
-        handlers = EventDispatchManager().default_dispatch.event_handlers.get(event, [])
-    assert handler in handlers
+        return EventDispatchManager().default_dispatch.event_handlers.get(event, [])
 
 
 def validate_received_events(handler: EventHandler, expected_events: [Any], is_ignore_registration_event=True):
@@ -95,3 +109,8 @@ def validate_received_event(handler: EventHandler, expected_event: Any, expected
                 # if event.payload == expected_payload:
                 return
     pytest.fail(f'Could not find expected event: {expected_event}')
+
+
+def validate_event_not_received(handler: EventHandler, expected_event: Any):
+    expected_event = EventDispatch.to_string_event(expected_event)
+    assert expected_event not in handler.received_events

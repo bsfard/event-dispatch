@@ -49,8 +49,8 @@ class Data:
         return self.__data
 
     @property
-    def json(self) -> str:
-        return json.dumps(self.__data)
+    def json(self, pretty_print: bool = False) -> str:
+        return json.dumps(self.__data, indent=4) if pretty_print else json.dumps(self.__data)
 
 
 class Event(Data):

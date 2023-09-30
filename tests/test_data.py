@@ -55,6 +55,38 @@ def test_init__when_data_is_empty_dict():
     assert d.json == '{}'
 
 
+def test_init__when_data_is_nested_primitive_dict():
+    # Setup
+    mom = {
+        'name': 'Barbara',
+        'aga': 70
+    }
+    child1 = {
+        'name': 'Jane',
+        'aga': 10
+    }
+
+    child2 = {
+        'name': 'Jim',
+        'aga': 6
+    }
+
+    data = {
+        'name': 'Bob',
+        'children': [child1, child2],
+        'mom': mom
+    }
+
+    # Test
+    d = Data(data)
+    print(d.json)
+
+
+def test_init__when_data_is_nested_obj_dict():
+    # TODO
+    pass
+
+
 def test_get__when_raw_data_is_empty_dict():
     # Objective:
     # Get call fails since there's no key.

@@ -82,7 +82,7 @@ def get_registered_handlers_for_event(event: str = None) -> [Callable]:
         return EventDispatchManager().default_dispatch.event_handlers.get(event, [])
 
 
-def validate_received_events(handler: EventHandler, expected_events: [Any], is_ignore_registration_event=True):
+def validate_received_events(handler: EventHandler, expected_events: [Any], is_ignore_registration_event: bool = True):
     expected_events = EventDispatch.to_string_events(expected_events)
     registration_event = EventDispatch.to_string_event(EventDispatchEvent.HANDLER_REGISTERED)
     if is_ignore_registration_event:
@@ -105,6 +105,9 @@ def validate_received_event(handler: EventHandler, expected_event: Any, expected
     expected_event = EventDispatch.to_string_event(expected_event)
     for name, event in handler.received_events.items():
         if name == expected_event:
+            if not expected_payload:
+                return
+
             if event.payload.keys() == expected_payload.keys():
                 # if event.payload == expected_payload:
                 return

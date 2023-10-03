@@ -100,7 +100,7 @@ def test_map_events__no_payload(events_to_watch: [str]):
     validate_received_events(handler1, [EventMapEvent.MAPPING_CREATED.namespaced_value])
 
 
-def test_map_events__when_duplicate_mapping():
+def test_map_events__when_duplicate_mapping__no_reset():
     # Objective:
     # Exception is thrown.
 
@@ -118,6 +118,29 @@ def test_map_events__when_duplicate_mapping():
         pytest.fail('Expected to get exception')
     except DuplicateMappingError:
         pass
+
+    # Verify
+    # (none)
+
+
+def test_map_events__when_duplicate_mapping__with_reset():
+    # Objective:
+    # Event map is reset.
+    # Event is posted for map reset.
+
+    # Setup
+    events_to_map = [
+        Event(event_to_watch_1, {}),
+    ]
+    event_to_post = Event(event_to_map, {})
+    event_map_manager.map_events(events_to_map, event_to_post)
+    validate_event_map_exists(events_to_map, event_to_post)
+
+    # Test
+    try:
+        event_map_manager.map_events(events_to_map, event_to_post, reset_if_exists=True)
+    except DuplicateMappingError:
+        pytest.fail('Did not expect to get exception')
 
     # Verify
     # (none)

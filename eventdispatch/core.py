@@ -56,14 +56,14 @@ class Data:
 class Event(Data):
     __id = 0
 
-    def __init__(self, name: str, payload: Dict[str, Any] = None):
+    def __init__(self, name: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any] = None):
         if not name:
             raise InvalidEventError([name])
 
         super(Event, self).__init__({
             'id': Event.generate_id(),
             'time': time.time(),
-            'name': name,
+            'name': EventDispatch.to_string_event(name),
             'payload': payload if payload else {}
         })
 
@@ -494,6 +494,7 @@ class InvalidEventError(NotifiableError):
 
 class EventMapEvent(NamespacedEnum):
     MAPPING_CREATED = 'mapping_created'
+    MAPPING_RESET = 'mapping_reset'
     MAPPING_TRIGGERED = 'mapping_triggered'
     MAPPING_REMOVED = 'mapping_removed'
 
@@ -534,21 +535,18 @@ class MappingNotFoundError(NotifiableError):
 
 
 class EventMap:
-    def __init__(self, event_dispatch: EventDispatch, events_to_map: [Event], event_to_post: Event, key: str,
-                 reset: bool = False):
+    def __init__(self, event_dispatch: EventDispatch, events_to_map: [Event], event_to_post: Event, key: str):
         if not events_to_map or not event_to_post or not any(events_to_map):
             raise InvalidMappingEventsError(events_to_map, event_to_post)
         self.__event_dispatch = event_dispatch
-        self.__events_to_watch = {event.name: event.payload for event in events_to_map}
-        self.__mapped_events = [event.name for event in events_to_map]
+        self.__events_to_map = events_to_map
         self.__event_to_post = event_to_post
+        self.__events_to_watch = {}
+        self.__mapped_events = [event.name for event in events_to_map]
+
         self.__key = key
 
-        self.__reset = reset
-        # TODO: for reset, need to persist original events to map, and clone that each time we need to reset.
-        # TODO: Update to also map for specific payload keys/values
-
-        self.__event_dispatch.register(self.on_event, self.__mapped_events)
+        self.reset()
 
     @property
     def events_to_watch(self) -> [str]:
@@ -561,6 +559,10 @@ class EventMap:
     @property
     def event_to_post(self) -> str:
         return self.__event_to_post.name
+
+    def reset(self):
+        self.__events_to_watch = {event.name: event.payload for event in self.__events_to_map}
+        self.__event_dispatch.register(self.on_event, self.__mapped_events)
 
     @synchronized
     def on_event(self, event: Event):
@@ -605,7 +607,7 @@ class EventMapManager(EventMapper):
     def event_maps(self) -> Dict[str, Any]:
         return self.__event_maps
 
-    def map_events(self, events_to_map: [Event], event_to_post: Event, reset: bool = False):
+    def map_events(self, events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
         if not events_to_map or not event_to_post:
             raise InvalidMappingEventsError(events_to_map, event_to_post)
 
@@ -613,15 +615,20 @@ class EventMapManager(EventMapper):
 
         # Check if event map was already requested.
         if key in self.__event_maps:
-            raise DuplicateMappingError(events_to_map, event_to_post)
+            if reset_if_exists:
+                event_map = self.__event_maps[key]
+                event_map.reset()
+                event_name = EventMapEvent.MAPPING_RESET
+            else:
+                raise DuplicateMappingError(events_to_map, event_to_post)
+        else:
+            # Create and store event map.
+            self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key)
+            event_name = EventMapEvent.MAPPING_CREATED
 
-        # Create and store event map.
-        self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key, reset)
-
-        self.__event_dispatch.post_event(EventMapEvent.MAPPING_CREATED.namespaced_value, {
+        self.__event_dispatch.post_event(event_name.namespaced_value, {
             'events_to_map': events_to_map,
-            'event_to_post': event_to_post,
-            'reset': reset
+            'event_to_post': event_to_post
         })
 
     def remove_event_map_by_key(self, key: str):

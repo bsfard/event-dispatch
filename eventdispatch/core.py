@@ -202,7 +202,7 @@ class EventDispatchEvent(NamespacedEnum):
 
 
 class EventMapper:
-    def map_events(self, events_to_map: [Event], event_to_post: Event, reset: bool = False):
+    def map_events(self, events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
         pass
 
     def unregister_from_events(self):

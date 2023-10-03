@@ -507,8 +507,8 @@ class DuplicateMappingError(NotifiableError):
         message = f"Mapping for events provided already exists."
         error = 'duplicate_mapping'
         payload = {
-            'events_to_map': events_to_map,
-            'event_to_post': event_to_post
+            'events_to_map': [event.dict for event in events_to_map],
+            'event_to_post': event_to_post.dict
         }
         super().__init__(message, error, payload)
 
@@ -627,8 +627,8 @@ class EventMapManager(EventMapper):
             event_name = EventMapEvent.MAPPING_CREATED
 
         self.__event_dispatch.post_event(event_name.namespaced_value, {
-            'events_to_map': events_to_map,
-            'event_to_post': event_to_post
+            'events_to_map': [event.dict for event in events_to_map],
+            'event_to_post': event_to_post.dict
         })
 
     def remove_event_map_by_key(self, key: str):

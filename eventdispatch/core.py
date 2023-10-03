@@ -138,15 +138,15 @@ def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any
     EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload, exclude_handler)
 
 
-def map_events(events_to_map: [Event], event_to_post: Event, reset: bool = False):
+def map_events(events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
     """
     Maps an event to be posted when all specified events occur.
     :param events_to_map: list of Event objects (event name and payload) to be watched
     :param event_to_post: Event object (event name and payload) to be posted when all watched events occur
-    :param reset: (unused at this time)
+    :param reset_if_exists: (unused at this time)
     :return:
     """
-    EventDispatchManager().default_dispatch.map_events(events_to_map, event_to_post, reset)
+    EventDispatchManager().default_dispatch.map_events(events_to_map, event_to_post, reset_if_exists)
 
 
 class NotifiableError(Exception):
@@ -369,10 +369,10 @@ class EventDispatch:
         # Set new event mapper.
         self.__event_mapper = event_mapper
 
-    def map_events(self, events_to_map: [Event], event_to_post: Event, reset: bool = False):
+    def map_events(self, events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
         if not self.__event_mapper:
             self.__event_mapper = EventMapManager(self)
-        self.__event_mapper.map_events(events_to_map, event_to_post, reset)
+        self.__event_mapper.map_events(events_to_map, event_to_post, reset_if_exists)
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:

@@ -39,6 +39,95 @@ def teardown_module():
     event_dispatch.toggle_event_logging(False)
 
 
+test_params__events_to_watch__expected_keys = [
+    # One event, no payload.
+    (
+        [
+            Event(event_to_watch_1, {}),
+        ],
+        'ca29afc0c6f152074f1bb35fb0f1c5a987f0938a4767639740f6169e96cea4ed'
+    ),
+
+    # One event, with payload.
+    (
+        [
+            Event(event_to_watch_1, {'id': 5}),
+        ],
+        '2179092d98d47a016a99009c9cfa6f939cf33e93642c528480053df39a37767e'
+    ),
+
+    # Two events, no payload, one order.
+    (
+        [
+            Event(event_to_watch_1, {}),
+            Event(event_to_watch_2, {}),
+        ],
+        '73fe8cf3e1944372cd6bf424fc672a6ca621e90195c4084d6e9d77ce0113c1fa'
+    ),
+
+    # Two events, no payload, different order.
+    (
+        [
+            Event(event_to_watch_2, {}),
+            Event(event_to_watch_1, {}),
+        ],
+        '73fe8cf3e1944372cd6bf424fc672a6ca621e90195c4084d6e9d77ce0113c1fa'
+    ),
+
+    # Two events, one with payload, one order.
+    (
+        [
+            Event(event_to_watch_1, {'id': 5}),
+            Event(event_to_watch_2, {}),
+        ],
+        'dd02b72f92cfae8cf991e6478805b072f30c975ea93e3a794d1713483df97142'
+    ),
+
+    # Two events, one with payload, different order.
+    (
+        [
+            Event(event_to_watch_2, {}),
+            Event(event_to_watch_1, {'id': 5}),
+        ],
+        'dd02b72f92cfae8cf991e6478805b072f30c975ea93e3a794d1713483df97142'
+    ),
+
+    # Two events, payload, one order.
+    (
+        [
+            Event(event_to_watch_1, {'id': 5}),
+            Event(event_to_watch_2, {'name': 'mary', 'age': 10}),
+        ],
+        '3bea6bb39ac22ea37b905767bd93f3ca83f3fee2242480bd264039212be7f29c'
+    ),
+
+    # Two events, payload, different order.
+    (
+        [
+            Event(event_to_watch_2, {'name': 'mary', 'age': 10}),
+            Event(event_to_watch_1, {'id': 5}),
+        ],
+        '3bea6bb39ac22ea37b905767bd93f3ca83f3fee2242480bd264039212be7f29c'
+    ),
+
+]
+
+
+@pytest.mark.parametrize('event_to_watch, expected_key', test_params__events_to_watch__expected_keys)
+def test_build_key(event_to_watch: [Event], expected_key: str):
+    # Objective:
+    # Key is built correctly, given the specific inputs.
+
+    # Setup
+    # (none)
+
+    # Test
+    key = event_map_manager.build_key(event_to_watch)
+
+    # Verify
+    assert key == expected_key
+
+
 @pytest.mark.parametrize('events_to_watch, event_to_post', [
     (
             [], 'test_event'
@@ -74,33 +163,28 @@ def test_map_events__when_invalid_events(events_to_watch: [str], event_to_post: 
     # (none)
 
 
-@pytest.mark.parametrize('events_to_watch', [
-    [event_to_watch_1, event_to_watch_2],
-    [event_to_watch_1]
-])
-def test_map_events__no_payload(events_to_watch: [str]):
+@pytest.mark.parametrize('events_to_watch, expected_key', test_params__events_to_watch__expected_keys)
+def test_map_events__no_payload(events_to_watch: [Event], expected_key: str):
     # Objective:
     # Event map is created.
     # Event is posted for map created.
 
     # Setup
-    events = []
-    for event_to_watch in events_to_watch:
-        events.append(Event(event_to_watch, {}))
-    events_to_map = events
     event_to_post = Event(event_to_map, {})
+
     register_handler_for_event(handler1, EventMapEvent.MAPPING_CREATED.namespaced_value)
 
     # Test
-    event_map_manager.map_events(events_to_map, event_to_post)
+    key = event_map_manager.map_events(events_to_watch, event_to_post)
 
     # Verify
     time.sleep(0.2)
-    validate_event_map_exists(events_to_map, event_to_post)
+    validate_event_map_exists(events_to_watch)
     validate_received_events(handler1, [EventMapEvent.MAPPING_CREATED.namespaced_value])
+    assert key == expected_key
 
 
-def test_map_events__when_duplicate_mapping__no_reset():
+def test_map_events__when_duplicate_mapping():
     # Objective:
     # Exception is thrown.
 
@@ -110,7 +194,7 @@ def test_map_events__when_duplicate_mapping__no_reset():
     ]
     event_to_post = Event(event_to_map, {})
     event_map_manager.map_events(events_to_map, event_to_post)
-    validate_event_map_exists(events_to_map, event_to_post)
+    validate_event_map_exists(events_to_map)
 
     # Test
     try:
@@ -123,27 +207,31 @@ def test_map_events__when_duplicate_mapping__no_reset():
     # (none)
 
 
-def test_map_events__when_duplicate_mapping__with_reset():
+@pytest.mark.parametrize('events_to_watch, expected_key', [
+    # One event, no payload.
+    (
+            [
+                Event(event_to_watch_1, {}),
+            ],
+            'ca29afc0c6f152074f1bb35fb0f1c5a987f0938a4767639740f6169e96cea4ed'
+    ),
+])
+def test_map_events__when_duplicate_mapping__with_ignore_if_exists(events_to_watch: [Event], expected_key: str):
     # Objective:
-    # Event map is reset.
-    # Event is posted for map reset.
+    # Event map is not created.
+    # Event is not posted for map created.
+    # Exception is NOT thrown
 
     # Setup
-    events_to_map = [
-        Event(event_to_watch_1, {}),
-    ]
     event_to_post = Event(event_to_map, {})
-    event_map_manager.map_events(events_to_map, event_to_post)
-    validate_event_map_exists(events_to_map, event_to_post)
+    event_map_manager.map_events(events_to_watch, event_to_post)
+    validate_event_map_exists(events_to_watch)
 
     # Test
-    try:
-        event_map_manager.map_events(events_to_map, event_to_post, reset_if_exists=True)
-    except DuplicateMappingError:
-        pytest.fail('Did not expect to get exception')
+    key = event_map_manager.map_events(events_to_watch, event_to_post, ignore_if_exists=True)
 
     # Verify
-    # (none)
+    assert key == expected_key
 
 
 @pytest.mark.parametrize('key', [
@@ -180,17 +268,17 @@ def test_remove_event_map_by_key__when_key_exists():
     ]
     event_to_post = Event(event_to_map, {})
     event_map_manager.map_events(events_to_map, event_to_post)
-    validate_event_map_exists(events_to_map, event_to_post)
+    validate_event_map_exists(events_to_map)
     register_handler_for_event(handler1, EventMapEvent.MAPPING_REMOVED.namespaced_value)
 
-    key = event_map_manager.build_key(events_to_map, event_to_post)
+    key = event_map_manager.build_key(events_to_map)
 
     # Test
     event_map_manager.remove_event_map_by_key(key)
 
     # Verify
     time.sleep(0.2)
-    validate_event_map_not_exist(events_to_map, event_to_post)
+    validate_event_map_not_exist(events_to_map)
     validate_received_events(handler1, [EventMapEvent.MAPPING_REMOVED.namespaced_value])
 
 
@@ -209,9 +297,9 @@ def test_on_event__when_event_is_mapping_triggered(key_exists: bool):
     ]
     event_to_post = Event(event_to_map, {})
     event_map_manager.map_events(events_to_map, event_to_post)
-    validate_event_map_exists(events_to_map, event_to_post)
+    validate_event_map_exists(events_to_map)
 
-    key = '' if not key_exists else event_map_manager.build_key(events_to_map, event_to_post)
+    key = '' if not key_exists else event_map_manager.build_key(events_to_map)
 
     test_event = Event(EventMapEvent.MAPPING_TRIGGERED.namespaced_value, {'key': key})
 
@@ -220,9 +308,9 @@ def test_on_event__when_event_is_mapping_triggered(key_exists: bool):
 
     # Verify
     if key_exists:
-        validate_event_map_not_exist(events_to_map, event_to_post)
+        validate_event_map_not_exist(events_to_map)
     else:
-        validate_event_map_exists(events_to_map, event_to_post)
+        validate_event_map_exists(events_to_map)
 
 
 def test__when_have_event_map__mapping_triggered():
@@ -236,23 +324,23 @@ def test__when_have_event_map__mapping_triggered():
     ]
     event_to_post = Event(event_to_map, {})
     event_map_manager.map_events(events_to_map, event_to_post)
-    validate_event_map_exists(events_to_map, event_to_post)
+    validate_event_map_exists(events_to_map)
 
-    key = event_map_manager.build_key(events_to_map, event_to_post)
+    key = event_map_manager.build_key(events_to_map)
 
     # Test
     post_event(EventMapEvent.MAPPING_TRIGGERED, {'key': key})
 
     # Verify
     time.sleep(0.2)
-    validate_event_map_not_exist(events_to_map, event_to_post)
+    validate_event_map_not_exist(events_to_map)
 
 
-def validate_event_map_exists(events_to_map: [Event], event_to_post: Event):
-    key = event_map_manager.build_key(events_to_map, event_to_post)
+def validate_event_map_exists(events_to_map: [Event]):
+    key = event_map_manager.build_key(events_to_map)
     assert key in event_map_manager.event_maps
 
 
-def validate_event_map_not_exist(events_to_map: [Event], event_to_post: Event):
-    key = event_map_manager.build_key(events_to_map, event_to_post)
+def validate_event_map_not_exist(events_to_map: [Event]):
+    key = event_map_manager.build_key(events_to_map)
     assert key not in event_map_manager.event_maps

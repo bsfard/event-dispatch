@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import json
 import logging
 import threading
@@ -138,15 +139,15 @@ def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any
     EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload, exclude_handler)
 
 
-def map_events(events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
+def map_events(events_to_map: [Event], event_to_post: Event, ignore_if_exists: bool = False) -> str:
     """
     Maps an event to be posted when all specified events occur.
     :param events_to_map: list of Event objects (event name and payload) to be watched
     :param event_to_post: Event object (event name and payload) to be posted when all watched events occur
-    :param reset_if_exists: (unused at this time)
-    :return:
+    :param ignore_if_exists: Skip attempt to map events if a map for given events already exists.
+    :return: unique key for this event map (currently built using only events_to_map)
     """
-    EventDispatchManager().default_dispatch.map_events(events_to_map, event_to_post, reset_if_exists)
+    return EventDispatchManager().default_dispatch.map_events(events_to_map, event_to_post, ignore_if_exists)
 
 
 class NotifiableError(Exception):
@@ -369,10 +370,10 @@ class EventDispatch:
         # Set new event mapper.
         self.__event_mapper = event_mapper
 
-    def map_events(self, events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
+    def map_events(self, events_to_map: [Event], event_to_post: Event, ignore_if_exists: bool = False) -> str:
         if not self.__event_mapper:
             self.__event_mapper = EventMapManager(self)
-        self.__event_mapper.map_events(events_to_map, event_to_post, reset_if_exists)
+        return self.__event_mapper.map_events(events_to_map, event_to_post, ignore_if_exists)
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:
@@ -541,12 +542,12 @@ class EventMap:
         self.__event_dispatch = event_dispatch
         self.__events_to_map = events_to_map
         self.__event_to_post = event_to_post
-        self.__events_to_watch = {}
+        self.__events_to_watch = {event.name: event.payload for event in self.__events_to_map}
         self.__mapped_events = [event.name for event in events_to_map]
 
         self.__key = key
 
-        self.reset()
+        self.__event_dispatch.register(self.on_event, self.__mapped_events)
 
     @property
     def events_to_watch(self) -> [str]:
@@ -559,10 +560,6 @@ class EventMap:
     @property
     def event_to_post(self) -> str:
         return self.__event_to_post.name
-
-    def reset(self):
-        self.__events_to_watch = {event.name: event.payload for event in self.__events_to_map}
-        self.__event_dispatch.register(self.on_event, self.__mapped_events)
 
     @synchronized
     def on_event(self, event: Event):
@@ -607,29 +604,25 @@ class EventMapManager(EventMapper):
     def event_maps(self) -> Dict[str, Any]:
         return self.__event_maps
 
-    def map_events(self, events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
+    def map_events(self, events_to_map: [Event], event_to_post: Event, ignore_if_exists: bool = False) -> str:
         if not events_to_map or not event_to_post:
             raise InvalidMappingEventsError(events_to_map, event_to_post)
 
-        key = self.build_key(events_to_map, event_to_post)
+        key = self.build_key(events_to_map)
 
-        # Check if event map was already requested.
-        if key in self.__event_maps:
-            if reset_if_exists:
-                event_map = self.__event_maps[key]
-                event_map.reset()
-                event_name = EventMapEvent.MAPPING_RESET
-            else:
-                raise DuplicateMappingError(events_to_map, event_to_post)
-        else:
-            # Create and store event map.
-            self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key)
-            event_name = EventMapEvent.MAPPING_CREATED
+        if key in self.__event_maps and not ignore_if_exists:
+            raise DuplicateMappingError(events_to_map, event_to_post)
+
+        # Create and store event map.
+        self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key)
+        event_name = EventMapEvent.MAPPING_CREATED
 
         self.__event_dispatch.post_event(event_name.namespaced_value, {
             'events_to_map': [event.dict for event in events_to_map],
             'event_to_post': event_to_post.dict
         })
+
+        return key
 
     def remove_event_map_by_key(self, key: str):
         try:
@@ -655,6 +648,25 @@ class EventMapManager(EventMapper):
         self.__event_dispatch.unregister(self.on_event, [EventMapEvent.MAPPING_TRIGGERED])
 
     @staticmethod
-    def build_key(events_to_map: [Event], event_to_post: Event) -> str:
-        to_watch = ','.join([event.name for event in events_to_map])
-        return f'{to_watch}->{event_to_post.name}'
+    def build_key(events_to_map: [Event]) -> str:
+
+        # Convert list of Event objects to list of event dictionaries.
+        event_dicts = [event.dict for event in events_to_map]
+
+        # Sort event dictionaries by event name.
+        sorted_events = sorted(event_dicts, key=lambda x: x['name'])
+
+        # Create string of sorted event names.
+        events = ','.join([event['name'] for event in sorted_events])
+
+        # Create string of ordered and sorted event payloads.
+        payload = ','.join([json.dumps(event['payload'], sort_keys=True) for event in sorted_events])
+
+        # Encode event name and event payload strings into a unique string.
+        return EventMapManager.__encode_string(f'{events}{payload}')
+
+    @staticmethod
+    def __encode_string(value: str) -> str:
+        h = hashlib.sha256()
+        h.update(value.encode('utf-8'))
+        return h.hexdigest()

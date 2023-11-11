@@ -129,7 +129,9 @@ class Worker3(Worker):
     def __init__(self):
         super().__init__(self.events_to_watch)
 
-        map_events(
+        super().__init__(self.events_to_watch)
+
+        event_map_key = map_events(
             events_to_map=[
                 Event(WorkerEvent.STEP1_COMPLETED, {'id': 10}),
                 Event(WorkerEvent.STEP2_COMPLETED),
@@ -139,6 +141,7 @@ class Worker3(Worker):
             event_to_post=Event(WorkerEvent.ALL_STEPS_COMPLETED, {'message': 'hello'}),
             ignore_if_exists=True
         )
+        self.logger.info(f'Event Map Key: {event_map_key}')
 
     def on_event(self, event: Event):
         super().on_event(event)

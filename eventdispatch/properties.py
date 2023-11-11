@@ -1,6 +1,6 @@
 from typing import Any
 
-from eventdispatch import NotifiableError
+from eventdispatch.core import NotifiableError
 from eventdispatch.decorators import singleton
 
 

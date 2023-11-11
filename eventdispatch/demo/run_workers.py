@@ -1,8 +1,8 @@
 import logging
 import time
 
-from demo.workers import Worker1, WorkerEvent, Worker2, Worker3
-from eventdispatch import post_event
+from eventdispatch.core import post_event
+from eventdispatch.demo.workers import Worker1, WorkerEvent, Worker2, Worker3
 
 LOG_LEVEL = logging.INFO
 

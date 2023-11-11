@@ -274,11 +274,13 @@ class EventDispatch:
 
     # -------------------------------------------------------------------------------------------------------
 
-    def __init__(self, channel: str = ''):
+    def __init__(self, channel: str = '', pretty_print: bool = False):
         self.__channel = channel
         self.__event_handlers: Dict[str, List[Callable]] = {}
         self.__event_queue: Queue = Queue()
         self.__event_mapper = None
+
+        self.pretty_print = pretty_print
 
         # --- For testing purposes ------------------------------------------------------------------------------
         self.__event_log = deque(maxlen=self.__EVENT_LOG_SIZE)
@@ -456,10 +458,14 @@ class EventDispatch:
 
 @singleton
 class EventDispatchManager:
-    def __init__(self):
+    __pretty_print: bool
+
+    def __init__(self, pretty_print: bool = False):
+        self.__pretty_print = pretty_print
+
         # Create default event dispatcher (for local events, as well as events without a channel).
         self.__event_dispatchers: Dict[str, EventDispatch] = {
-            '': EventDispatch()
+            '': EventDispatch(pretty_print=pretty_print)
         }
 
     @property
@@ -472,7 +478,7 @@ class EventDispatchManager:
 
     def add_event_dispatch(self, channel: str) -> bool:
         if channel not in self.__event_dispatchers:
-            self.__event_dispatchers[channel] = EventDispatch(channel)
+            self.__event_dispatchers[channel] = EventDispatch(channel, self.__pretty_print)
             return True
         return False
 
@@ -507,10 +513,7 @@ class DuplicateMappingError(NotifiableError):
     def __init__(self, events_to_map: [Event], event_to_post: Event):
         message = f"Mapping for events provided already exists."
         error = 'duplicate_mapping'
-        payload = {
-            'events_to_map': [event.dict for event in events_to_map],
-            'event_to_post': event_to_post.dict
-        }
+        payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
         super().__init__(message, error, payload)
 
 
@@ -518,10 +521,7 @@ class InvalidMappingEventsError(NotifiableError):
     def __init__(self, events_to_map: [Event], event_to_post: Event):
         message = f"Invalid events provided for event mapping."
         error = 'invalid_events'
-        payload = {
-            'events_to_map': events_to_map,
-            'event_to_post': event_to_post
-        }
+        payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
         super().__init__(message, error, payload)
 
 
@@ -554,12 +554,12 @@ class EventMap:
         return self.__events_to_watch
 
     @property
-    def events_to_map(self) -> [str]:
-        return self.__mapped_events
+    def events_to_map(self) -> [Event]:
+        return self.__events_to_map
 
     @property
-    def event_to_post(self) -> str:
-        return self.__event_to_post.name
+    def event_to_post(self) -> Event:
+        return self.__event_to_post
 
     @synchronized
     def on_event(self, event: Event):
@@ -587,7 +587,6 @@ class EventMap:
         if not self.__events_to_watch:
             self.__event_dispatch.post_event(self.__event_to_post.name, self.__event_to_post.payload)
             self.stop()
-            # TODO: Update to also post event with specified payload.
 
     def stop(self):
         self.__event_dispatch.unregister(self.on_event, self.__mapped_events)
@@ -595,6 +594,8 @@ class EventMap:
 
 
 class EventMapManager(EventMapper):
+    __logger = logging.getLogger(__name__)
+
     def __init__(self, event_dispatch: EventDispatch):
         self.__event_maps = {}
         self.__event_dispatch = event_dispatch
@@ -609,28 +610,27 @@ class EventMapManager(EventMapper):
             raise InvalidMappingEventsError(events_to_map, event_to_post)
 
         key = self.build_key(events_to_map)
-
-        if key in self.__event_maps and not ignore_if_exists:
-            raise DuplicateMappingError(events_to_map, event_to_post)
+        if key in self.__event_maps:
+            if ignore_if_exists:
+                self.__log_message_ignoring_duplicate_event_mapping(events_to_map, event_to_post)
+                return key
+            else:
+                self.__log_message_duplicate_event_mapping(events_to_map, event_to_post)
+                raise DuplicateMappingError(events_to_map, event_to_post)
 
         # Create and store event map.
         self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key)
         event_name = EventMapEvent.MAPPING_CREATED
-
-        self.__event_dispatch.post_event(event_name.namespaced_value, {
-            'events_to_map': [event.dict for event in events_to_map],
-            'event_to_post': event_to_post.dict
-        })
+        payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
+        self.__event_dispatch.post_event(event_name.namespaced_value, payload)
 
         return key
 
     def remove_event_map_by_key(self, key: str):
         try:
             event_map = self.__event_maps.pop(key)
-            self.__event_dispatch.post_event(EventMapEvent.MAPPING_REMOVED.namespaced_value, {
-                'events_to_map': event_map.events_to_map,
-                'event_to_post': event_map.event_to_post,
-            })
+            payload = EventMapUtil.build_event_mapping_payload(event_map.events_to_map, event_map.event_to_post)
+            self.__event_dispatch.post_event(EventMapEvent.MAPPING_REMOVED.namespaced_value, payload)
         except KeyError:
             raise MappingNotFoundError(key)
 
@@ -646,6 +646,25 @@ class EventMapManager(EventMapper):
 
     def unregister_from_events(self):
         self.__event_dispatch.unregister(self.on_event, [EventMapEvent.MAPPING_TRIGGERED])
+
+    def __log_message_ignoring_duplicate_event_mapping(self, events_to_map: [Event], event_to_post: Event):
+        payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
+        if self.__event_dispatch.pretty_print:
+            payload = json.dumps(payload, indent=2) + '\n'
+        else:
+            payload = f"{payload}'\n'"
+
+        message = f"Ignoring event mapping request...mapping already exists\n{payload}"
+        EventMapManager.__logger.debug(message)
+
+    def __log_message_duplicate_event_mapping(self, events_to_map: [Event], event_to_post: Event):
+        payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
+        if self.__event_dispatch.pretty_print:
+            payload = json.dumps(payload, indent=2) + '\n'
+        else:
+            payload = f"{payload}'\n'"
+        message = f"Duplicate event mapping\n{payload}"
+        EventMapManager.__logger.error(message)
 
     @staticmethod
     def build_key(events_to_map: [Event]) -> str:
@@ -663,10 +682,31 @@ class EventMapManager(EventMapper):
         payload = ','.join([json.dumps(event['payload'], sort_keys=True) for event in sorted_events])
 
         # Encode event name and event payload strings into a unique string.
-        return EventMapManager.__encode_string(f'{events}{payload}')
+        return EventMapUtil.encode_string(f'{events}{payload}')
+
+
+class EventMapUtil:
+    @staticmethod
+    def build_event_mapping_payload(events_to_map: [Event], event_to_post: Event) -> Dict[str, Any]:
+        if not (events_to_map is None or events_to_map == [] or any(element is None for element in events_to_map)):
+            events_to_map = [event.dict for event in events_to_map]
+            events_to_map = [EventMapUtil.remove_unique_items_from_event(event) for event in events_to_map]
+
+        if event_to_post:
+            event_to_post = event_to_post.dict
+            event_to_post = EventMapUtil.remove_unique_items_from_event(event_to_post)
+
+        return {
+            'events_to_map': events_to_map,
+            'event_to_post': event_to_post
+        }
 
     @staticmethod
-    def __encode_string(value: str) -> str:
+    def remove_unique_items_from_event(event: Dict[str, Any]) -> Dict[str, Any]:
+        return {key: value for key, value in event.items() if key not in ['id', 'time']}
+
+    @staticmethod
+    def encode_string(value: str) -> str:
         h = hashlib.sha256()
         h.update(value.encode('utf-8'))
         return h.hexdigest()

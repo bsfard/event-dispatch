@@ -136,7 +136,8 @@ class Worker3(Worker):
                 Event(WorkerEvent.STEP3_COMPLETED),
                 Event(WorkerEvent.STEP4_COMPLETED, {'age': 25})
             ],
-            event_to_post=Event(WorkerEvent.ALL_STEPS_COMPLETED, {'message': 'hello'})
+            event_to_post=Event(WorkerEvent.ALL_STEPS_COMPLETED, {'message': 'hello'}),
+            ignore_if_exists=True
         )
 
     def on_event(self, event: Event):

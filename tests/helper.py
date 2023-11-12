@@ -11,7 +11,7 @@ class EventHandler:
 
     def on_event(self, event: Event):
         if event.name in self.received_events:
-            message = f'Same event received again'
+            message = 'Same event received again'
             message += f'\nEvent1: {self.received_events[event.name].dict}'
             message += f'\nEvent2: {event.dict}'
             pytest.fail(message)

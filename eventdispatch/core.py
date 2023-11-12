@@ -341,7 +341,8 @@ class EventDispatch:
             # Get all-event handlers.
             all_event_handlers = self.__event_handlers.get(self.__ALL_EVENTS, [])
 
-            # Combine handlers and all-event handlers into one unique list (in case some handlers are registered for both).
+            # Combine handlers and all-event handlers into one unique list
+            # (in case some handlers are registered for both).
             for handler in all_event_handlers:
                 if handler not in event_handlers and handler != exclude_handler:
                     event_handlers.append(handler)
@@ -518,7 +519,7 @@ class EventMapEvent(NamespacedEnum):
 
 class DuplicateMappingError(NotifiableError):
     def __init__(self, events_to_map: [Event], event_to_post: Event):
-        message = f"Mapping for events provided already exists."
+        message = 'Mapping for events provided already exists.'
         error = 'duplicate_mapping'
         payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
         super().__init__(message, error, payload)
@@ -526,7 +527,7 @@ class DuplicateMappingError(NotifiableError):
 
 class InvalidMappingEventsError(NotifiableError):
     def __init__(self, events_to_map: [Event], event_to_post: Event):
-        message = f"Invalid events provided for event mapping."
+        message = 'Invalid events provided for event mapping.'
         error = 'invalid_events'
         payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
         super().__init__(message, error, payload)

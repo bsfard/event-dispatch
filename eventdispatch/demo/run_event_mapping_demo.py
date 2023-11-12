@@ -34,7 +34,7 @@ def run_worker(worker_id: int):
 
 
 def run_final_worker():
-    print_message(f'Running final worker...')
+    print_message('Running final worker...')
 
 
 def on_event(event: Event):

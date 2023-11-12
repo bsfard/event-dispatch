@@ -22,7 +22,7 @@ def setup_module():
 
 
 def setup_function():
-    global handler1, event_map_manager
+    global event_dispatch, handler1, event_map_manager
 
     event_dispatch.clear_event_log()
     event_dispatch.log_event_if_no_handlers = True
@@ -36,6 +36,7 @@ def teardown_function():
 
 
 def teardown_module():
+    global event_dispatch
     event_dispatch.toggle_event_logging(False)
 
 
@@ -118,6 +119,8 @@ def test_build_key(event_to_watch: [Event], expected_key: str):
     # Objective:
     # Key is built correctly, given the specific inputs.
 
+    global event_map_manager
+
     # Setup
     # (none)
 
@@ -142,6 +145,8 @@ def test_build_key(event_to_watch: [Event], expected_key: str):
 def test_map_events__when_invalid_events(events_to_watch: [str], event_to_post: str):
     # Objective:
     # Exception is thrown.
+
+    global event_map_manager
 
     # Setup
     events_to_map = []
@@ -169,6 +174,8 @@ def test_map_events__no_payload(events_to_watch: [Event], expected_key: str):
     # Event map is created.
     # Event is posted for map created.
 
+    global handler1, event_map_manager
+
     # Setup
     event_to_post = Event(event_to_map, {})
 
@@ -187,6 +194,8 @@ def test_map_events__no_payload(events_to_watch: [Event], expected_key: str):
 def test_map_events__when_duplicate_mapping():
     # Objective:
     # Exception is thrown.
+
+    global event_map_manager
 
     # Setup
     events_to_map = [
@@ -222,6 +231,8 @@ def test_map_events__when_duplicate_mapping__with_ignore_if_exists(events_to_wat
     # Event is not posted for map created.
     # Exception is NOT thrown
 
+    global event_map_manager
+
     # Setup
     event_to_post = Event(event_to_map, {})
     event_map_manager.map_events(events_to_watch, event_to_post)
@@ -243,6 +254,8 @@ def test_remove_event_map_by_key__when_key_not_exist(key: str):
     # Objective:
     # Exception is thrown if key is invalid or valid but not found.
 
+    global event_map_manager
+
     # Setup
     # (none)
 
@@ -261,6 +274,8 @@ def test_remove_event_map_by_key__when_key_exists():
     # Objective:
     # Event map is removed.
     # Event is posted for map removal.
+
+    global handler1, event_map_manager
 
     # Setup
     events_to_map = [
@@ -291,6 +306,8 @@ def test_on_event__when_event_is_mapping_triggered(key_exists: bool):
     # Event map is removed when key exists, otherwise nothing is removed when key doesn't exist.
     # Testing is done via direct call to "on_event" method.
 
+    global event_map_manager
+
     # Setup
     events_to_map = [
         Event(event_to_watch_1, {}),
@@ -318,6 +335,8 @@ def test__when_have_event_map__mapping_triggered():
     # Event map is not altered.
     # Testing is done via event (that is sent to "on_event" method).
 
+    global event_map_manager
+
     # Setup
     events_to_map = [
         Event(event_to_watch_1, {}),
@@ -337,10 +356,12 @@ def test__when_have_event_map__mapping_triggered():
 
 
 def validate_event_map_exists(events_to_map: [Event]):
+    global event_map_manager
     key = event_map_manager.build_key(events_to_map)
     assert key in event_map_manager.event_maps
 
 
 def validate_event_map_not_exist(events_to_map: [Event]):
+    global event_map_manager
     key = event_map_manager.build_key(events_to_map)
     assert key not in event_map_manager.event_maps

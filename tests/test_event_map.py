@@ -25,7 +25,7 @@ def setup_module():
 
 
 def setup_function():
-    global handler1
+    global handler1, event_dispatch
 
     event_dispatch.clear_event_log()
     event_dispatch.clear_registered_handlers()
@@ -39,6 +39,7 @@ def teardown_function():
 
 
 def teardown_module():
+    global event_dispatch
     event_dispatch.toggle_event_logging(False)
 
 
@@ -46,6 +47,8 @@ def teardown_module():
 def test_constructor__when_no_events_to_watch(events_to_watch: [Event]):
     # Objective:
     # Exception is thrown.
+
+    global event_dispatch
 
     # Setup
     event_to_post = Event(event_to_map, {})
@@ -65,6 +68,8 @@ def test_constructor__when_no_events_to_watch(events_to_watch: [Event]):
 def test_constructor__when_no_mapped_event(event_to_post: Event):
     # Objective:
     # Exception is thrown.
+
+    global event_dispatch
 
     # Setup
     events_to_map = [
@@ -87,6 +92,8 @@ def test_constructor():
     # Objective:
     # Event map is watching for expected events.
     # Event map is registered for each event to watch.
+
+    global event_dispatch
 
     # Setup
     events_to_map = [
@@ -133,6 +140,8 @@ def test_on_event__when_not_last_event__payload_does_not_match(payload: Dict[str
     # Objective:
     # Events to watch are still the same.
 
+    global event_dispatch
+
     # Setup
     event_1_to_watch = Event(event_to_watch_1, {'id': 5})
     event_2_to_watch = Event(event_to_watch_2, {})
@@ -157,6 +166,8 @@ def test_on_event__when_not_last_event__payload_matches(payload: Dict[str, Any])
     # Events being watched are updated (1 less event being watched).
     # Events map does not generated mapped event.
 
+    global event_dispatch
+
     # Setup
     expected_payload = payload
     event_1_to_watch = Event(event_to_watch_1, expected_payload)
@@ -180,6 +191,8 @@ def test_on_event__when_not_last_event__payload_matches(payload: Dict[str, Any])
 def test_on_event__when_not_last_event__some_payload_matches(payload: Dict[str, Any]):
     # Objective:
     # Events to watch are still the same.
+
+    global event_dispatch
 
     # Setup
     expected_payload = {'id': 5, 'name': 'Jim'}
@@ -236,6 +249,8 @@ def test_on_event__when_last_event(mapping_payload: Dict[str, Any], post_payload
     # Events map generates mapped event, and mapping-triggered event.
     # Event map unregistered from events being watched.
 
+    global event_dispatch, handler1
+
     # Setup
     register(handler1, [event_to_map, EventMapEvent.MAPPING_TRIGGERED.namespaced_value])
 
@@ -268,6 +283,8 @@ def test_on_event__when_all_watched_events_already_occurred():
     # Objective:sss
     # Mapped event is not generated.
 
+    global handler1
+
     # Setup
     event_map = create_event_map_with_no_payload([event_to_watch_1, event_to_watch_2], event_to_map)
     post_event(event_to_watch_1, {})
@@ -289,6 +306,8 @@ def test_on_event__when_all_watched_events_already_occurred():
 
 
 def create_event_map_with_no_payload(events_to_watch: [str], event_to_post: str):
+    global event_dispatch
+
     events_to_map = [Event(event, {}) for event in events_to_watch]
     event_to_post = Event(event_to_post, {})
     return EventMap(event_dispatch, events_to_map, event_to_post, '')

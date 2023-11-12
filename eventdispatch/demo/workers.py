@@ -25,8 +25,8 @@ class Worker:
         self.logger = logging.getLogger(self.__class__.__name__)
 
         self.events_to_watch = events_to_watch
-        self.is_pretty_print = Properties().has('CLIENT_LOGGING_PRETTY_PRINT') and \
-                               Properties().get('CLIENT_LOGGING_PRETTY_PRINT')
+        self.is_pretty_print = \
+            Properties().has('CLIENT_LOGGING_PRETTY_PRINT') and Properties().get('CLIENT_LOGGING_PRETTY_PRINT')
 
         register_for_events(self.on_event, self.events_to_watch)
 

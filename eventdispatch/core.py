@@ -206,6 +206,10 @@ class EventMapper:
     def map_events(self, events_to_map: [Event], event_to_post: Event, reset_if_exists: bool = False):
         pass
 
+    @property
+    def event_maps(self) -> Dict[str, Any]:
+        return {}
+
     def unregister_from_events(self):
         pass
 
@@ -376,6 +380,9 @@ class EventDispatch:
         if not self.__event_mapper:
             self.__event_mapper = EventMapManager(self)
         return self.__event_mapper.map_events(events_to_map, event_to_post, ignore_if_exists)
+
+    def get_event_maps(self):
+        return self.__event_mapper.event_maps
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:

@@ -382,7 +382,7 @@ class EventDispatch:
         return self.__event_mapper.map_events(events_to_map, event_to_post, ignore_if_exists)
 
     def get_event_maps(self):
-        return self.__event_mapper.event_maps
+        return self.__event_mapper.event_maps if self.__event_mapper else {}
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:

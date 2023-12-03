@@ -9,6 +9,6 @@ setup(
     packages=find_packages(),
 
     install_requires=[
-        'wrapt==1.15.0',
+        'wrapt==1.16.0',
     ]
 )

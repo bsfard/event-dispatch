@@ -5,7 +5,7 @@ service.
 
 ## Key points
 
-- Events are generate and received within your app (process) only
+- Events are generated and received within your app (process) only
 - Events can contain an optional payload (key/value dictionary)
 - Each event has a name (type), an ID, and a time stamp
 - You can register (and unregister) for one or more events at a time

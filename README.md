@@ -218,7 +218,7 @@ Event payload is a dictionary that can have whatever schema of data you want, in
 useful to collect and add data (in the moment) that would otherwise be difficult to fetch or require coupling across
 components (after an operation).
 
-Events are generally consider to be "cheap" especially if no one is registered for them. So it's usually beneficial to
+Events are generally considered to be "cheap," especially if no one is registered for them. So it's usually beneficial to
 generate an event when key/interesting/epic steps in your application occur. When you generate an event in such a way,
 think about what information would be useful/interesting to a potential recipient of your event. Here are some examples
 of possible events with possible useful payloads:

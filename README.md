@@ -23,9 +23,9 @@ service.
 
 ## Python Versions
 
-Currently verified with: 3.12
+Requires Python 3.12 or newer.
 
-Previously tested with: 3.7, 3.8, 3.9, 3.10, 3.11
+Older versions were previously tested with Python 3.7, 3.8, 3.9, 3.10, and 3.11.
 
 ## Sections
 

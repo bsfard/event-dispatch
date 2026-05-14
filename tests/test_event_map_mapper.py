@@ -25,6 +25,7 @@ def setup_function():
     global event_dispatch, handler1, event_map_manager
 
     event_dispatch.clear_event_log()
+    event_dispatch.clear_registered_handlers()
     event_dispatch.log_event_if_no_handlers = True
 
     handler1 = EventHandler()

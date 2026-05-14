@@ -129,8 +129,6 @@ class Worker3(Worker):
     def __init__(self):
         super().__init__(self.events_to_watch)
 
-        super().__init__(self.events_to_watch)
-
         event_map_key = map_events(
             events_to_map=[
                 Event(WorkerEvent.STEP1_COMPLETED, {'id': 10}),

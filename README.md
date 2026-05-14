@@ -23,47 +23,63 @@ service.
 
 ## Python Versions
 
-Tested with: 3.7, 3.8, 3.9, 3.10, 3.11
+Currently verified with: 3.12
+
+Previously tested with: 3.7, 3.8, 3.9, 3.10, 3.11
 
 ## Sections
 
+- [To run tests and lint](#to-run-tests-and-lint)
 - [To run demo](#to-run-demo)
 - [To install package](#to-install-package)
 - [How to...](#how-to)
 - [Design tips/considerations](#design-tipsconsiderations)
 - [Troubleshooting](#troubleshooting)
 
+## To run tests and lint
+
+```shell
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r tests/requirements_test.txt
+python -m pytest
+python -m flake8
+```
+
 ## To run demo
 
 ```shell
 git clone https://github.com/bsfard/event-dispatch
-cd demo
-PYTHONPATH=../ python run_workers
+cd event-dispatch
+PYTHONPATH=. python eventdispatch/demo/run_workers.py
 ```
 
 ## To install package
 
-### using pip
+### Recommended: pin to a tag or commit
 
 ```shell
-# Latest version
-pip install git+https://github.com/bsfard/event-dispatch.git
+# Pin to a release tag.
+python -m pip install "eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@v0.0.6"
 
-# Specific version
-pip install git+https://github.com/bsfard/event-dispatch.git@v0.0.6
+# Pin to an exact commit.
+python -m pip install "eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<commit-sha>"
 ```
 
-### using requirements file
+### Requirements file
 
 ```shell
 # Add to requirements file:
 
-# Latest version
-eventdispatch@ git+https://github.com/bsfard/event-dispatch.git
+# Pin to a release tag.
+eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@v0.0.6
 
-# Specific version
-eventdispatch@ git+https://github.com/bsfard/event-dispatch.git@v0.0.6
+# Pin to an exact commit.
+eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<commit-sha>
 ```
+
+Pinning to a tag or commit makes installs repeatable. Installing from the default branch is useful while exploring, but
+it can change whenever new commits are pushed.
 
 ## How to
 

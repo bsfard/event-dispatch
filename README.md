@@ -29,30 +29,14 @@ Older versions were previously tested with Python 3.7, 3.8, 3.9, 3.10, and 3.11.
 
 ## Sections
 
+- [To install package](#to-install-package)
+- [Quickstart](#quickstart)
+- [Public API](#public-api)
+- [How to...](#how-to)
 - [To run tests and lint](#to-run-tests-and-lint)
 - [To run demo](#to-run-demo)
-- [To install package](#to-install-package)
-- [How to...](#how-to)
 - [Design tips/considerations](#design-tipsconsiderations)
 - [Troubleshooting](#troubleshooting)
-
-## To run tests and lint
-
-```shell
-python -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt -r tests/requirements_test.txt
-python -m pytest
-python -m flake8
-```
-
-## To run demo
-
-```shell
-git clone https://github.com/bsfard/event-dispatch
-cd event-dispatch
-PYTHONPATH=. python eventdispatch/demo/run_workers.py
-```
 
 ## To install package
 
@@ -80,6 +64,35 @@ eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<commit-sha>
 
 Pinning to a tag or commit makes installs repeatable. Installing from the default branch is useful while exploring, but
 it can change whenever new commits are pushed.
+
+## Quickstart
+
+```python
+from queue import Queue
+
+from eventdispatch import Event, post_event, register_for_events, unregister_from_events
+
+
+events = Queue()
+
+
+def on_event(event: Event):
+    events.put(event)
+
+
+register_for_events(on_event, ['app.started'])
+post_event('app.started', {'source': 'quickstart'})
+event = events.get(timeout=1)
+unregister_from_events(on_event, ['app.started'])
+
+print(event.name)
+print(event.payload)
+```
+
+## Public API
+
+Consumer code should import from `eventdispatch`, as shown in the examples. Modules such as `eventdispatch.core` are
+implementation details unless a symbol is also exported from `eventdispatch`.
 
 ## How to
 
@@ -204,6 +217,24 @@ try:
 except PropertyNotSetError:
     print('Occurs if you forgot to set property before accessing it')
 
+```
+
+## To run tests and lint
+
+```shell
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt -r tests/requirements_test.txt
+python -m pytest
+python -m flake8
+```
+
+## To run demo
+
+```shell
+git clone https://github.com/bsfard/event-dispatch
+cd event-dispatch
+PYTHONPATH=. python eventdispatch/demo/run_workers.py
 ```
 
 ## Design tips/considerations

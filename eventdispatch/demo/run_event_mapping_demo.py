@@ -4,8 +4,7 @@ import time
 
 from wrapt import synchronized
 
-from eventdispatch import Event, post_event, register_for_events
-from eventdispatch.core import map_events
+from eventdispatch import Event, map_events, post_event, register_for_events
 
 
 def create_workers():

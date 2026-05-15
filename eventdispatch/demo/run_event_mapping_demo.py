@@ -2,9 +2,9 @@ import random
 import threading
 import time
 
-from wrapt import synchronized
-
 from eventdispatch import Event, map_events, post_event, register_for_events
+
+print_lock = threading.Lock()
 
 
 def create_workers():
@@ -44,9 +44,9 @@ def on_event(event: Event):
         run_final_worker()
 
 
-@synchronized
 def print_message(msg: str):
-    print(msg)
+    with print_lock:
+        print(msg)
 
 
 if __name__ == '__main__':

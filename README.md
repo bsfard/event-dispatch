@@ -14,6 +14,7 @@ service.
 - If you subclass ```NotifiableError``` for your custom exceptions, error events will be generated each time your
   exceptions are raised
 - You can use a ```Properties``` object to store (and share) global-level info within your app
+- No third-party runtime dependencies
 
 ## High-level steps
 

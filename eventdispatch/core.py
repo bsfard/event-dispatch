@@ -10,8 +10,6 @@ from enum import Enum
 from queue import Queue
 from typing import Callable, Dict, Any, Union, List
 
-from wrapt import synchronized
-
 from eventdispatch.decorators import singleton
 
 
@@ -56,6 +54,7 @@ class Data:
 
 class Event(Data):
     __id = 0
+    __id_lock = threading.Lock()
 
     def __init__(self, name: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any] = None):
         if not name:
@@ -69,10 +68,10 @@ class Event(Data):
         })
 
     @staticmethod
-    @synchronized
     def generate_id():
-        Event.__id += 1
-        return Event.__id
+        with Event.__id_lock:
+            Event.__id += 1
+            return Event.__id
 
     @property
     def id(self) -> int:
@@ -280,6 +279,7 @@ class EventDispatch:
 
     def __init__(self, channel: str = '', pretty_print: bool = False):
         self.__channel = channel
+        self.__lock = threading.RLock()
         self.__event_handlers: Dict[str, List[Callable]] = {}
         self.__event_queue: Queue = Queue()
         self.__event_mapper = None
@@ -299,7 +299,7 @@ class EventDispatch:
 
         is_registered_for_event = False
 
-        with synchronized(self):
+        with self.__lock:
             if not events:
                 # Registering for all events.
                 events = [self.__ALL_EVENTS]
@@ -317,7 +317,7 @@ class EventDispatch:
 
         is_unregistered_for_event = False
 
-        with synchronized(self):
+        with self.__lock:
             if not events:
                 # Unregistering from all events.
                 events = [self.__ALL_EVENTS]
@@ -331,7 +331,7 @@ class EventDispatch:
             self.__log_message_unregistered(handler, events)
 
     def post_event(self, name: str, payload: Dict[str, Any] = None, exclude_handler: Callable[[Event], None] = None):
-        with synchronized(self):
+        with self.__lock:
             payload = payload if payload else {}
             event = Event(name, payload)
 
@@ -554,6 +554,7 @@ class EventMap:
         self.__mapped_events = [event.name for event in events_to_map]
 
         self.__key = key
+        self.__lock = threading.RLock()
 
         self.__event_dispatch.register(self.on_event, self.__mapped_events)
 
@@ -569,32 +570,32 @@ class EventMap:
     def event_to_post(self) -> Event:
         return self.__event_to_post
 
-    @synchronized
     def on_event(self, event: Event):
-        try:
-            # Check if event is being watched.
-            payload_to_watch = self.__events_to_watch[event.name]
+        with self.__lock:
+            try:
+                # Check if event is being watched.
+                payload_to_watch = self.__events_to_watch[event.name]
 
-            # Check event payload for matching keys and values from payload being watched.
-            for expected_key, expected_value in payload_to_watch.items():
-                try:
-                    value = event.payload.get(expected_key)
-                    if value != expected_value:
+                # Check event payload for matching keys and values from payload being watched.
+                for expected_key, expected_value in payload_to_watch.items():
+                    try:
+                        value = event.payload.get(expected_key)
+                        if value != expected_value:
+                            return
+                    except KeyError:
+                        # Event does not have expected payload to watch.
                         return
-                except KeyError:
-                    # Event does not have expected payload to watch.
-                    return
-        except KeyError:
-            # Not event/payload that is being watched, or event already occurred (and was removed from watch list).
-            return
+            except KeyError:
+                # Not event/payload that is being watched, or event already occurred (and was removed from watch list).
+                return
 
-        # Expected keys are present, and expected values confirmed.  Event is expected.
-        del self.__events_to_watch[event.name]
+            # Expected keys are present, and expected values confirmed.  Event is expected.
+            del self.__events_to_watch[event.name]
 
-        # Post mapped event if all expected events have been received.
-        if not self.__events_to_watch:
-            self.__event_dispatch.post_event(self.__event_to_post.name, self.__event_to_post.payload)
-            self.stop()
+            # Post mapped event if all expected events have been received.
+            if not self.__events_to_watch:
+                self.__event_dispatch.post_event(self.__event_to_post.name, self.__event_to_post.payload)
+                self.stop()
 
     def stop(self):
         self.__event_dispatch.unregister(self.on_event, self.__mapped_events)

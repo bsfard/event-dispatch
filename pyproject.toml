@@ -12,10 +12,6 @@ license = { file = "LICENSE" }
 authors = [
     { name = "Ben Sfard", email = "bsfard@gmail.com" },
 ]
-dependencies = [
-    "wrapt==1.16.0",
-]
-
 [project.urls]
 Homepage = "https://github.com/bsfard/event-dispatch"
 Repository = "https://github.com/bsfard/event-dispatch"

@@ -2,10 +2,10 @@ import time
 from typing import Any, Dict
 
 from eventdispatch import EventDispatch
-from eventdispatch.core import EventDispatchEvent, EventDispatchManager
+from eventdispatch.core import EventDispatchEvent, EventDispatchManager, InvalidEventError
 from helper import EventHandler, validate_test_handler_registered_for_event, \
     validate_handler_registered_for_all_events, validate_event_log_count, validate_expected_handler_count, \
-    register_handler_for_event, register, validate_received_events
+    register_handler_for_event, register, validate_received_events, validate_test_handler_not_registered_for_event
 
 event_dispatch: EventDispatch
 handler1: EventHandler
@@ -274,6 +274,8 @@ def test_post_event__when_registered_handler_and_different_all_event_registered_
     time.sleep(0.1)
     validate_received_events(handler1, [test_event])
     validate_received_events(all_event_handler, [test_event])
+    validate_expected_handler_count(2)
+    validate_test_handler_not_registered_for_event(all_event_handler, test_event)
 
 
 def test_post_event__when_same_registered_and_all_event_registered_handlers():
@@ -319,6 +321,23 @@ def test_post_event__when_two_registered_handlers_for_same_event():
     time.sleep(0.1)
     validate_received_events(handler1, [test_event])
     validate_received_events(handler2, [test_event])
+
+
+def test_register__when_invalid_event():
+    # Objective:
+    # Exception includes the invalid event names.
+
+    global handler1
+
+    # Setup
+    invalid_events = ['', None, '*']
+
+    # Test
+    try:
+        register(handler1, invalid_events)
+        assert False, 'Expected to get exception'
+    except InvalidEventError as e:
+        assert e.payload['events'] == invalid_events
 
 
 def test_post_event__when_registered_handler_for_different_event():

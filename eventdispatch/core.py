@@ -335,11 +335,11 @@ class EventDispatch:
             payload = payload if payload else {}
             event = Event(name, payload)
 
-            # Get handlers for event.
-            event_handlers = self.__event_handlers.get(name, [])
+            # Snapshot registered handlers so posting an event cannot mutate registration state.
+            event_handlers = list(self.__event_handlers.get(name, []))
 
             # Get all-event handlers.
-            all_event_handlers = self.__event_handlers.get(self.__ALL_EVENTS, [])
+            all_event_handlers = list(self.__event_handlers.get(self.__ALL_EVENTS, []))
 
             # Combine handlers and all-event handlers into one unique list
             # (in case some handlers are registered for both).
@@ -358,7 +358,7 @@ class EventDispatch:
 
             # Notify all handlers using threads (so handlers don't need to implement their own thread).
             for handler in event_handlers:
-                # Add thread to notify handler onto event queue (so event order would be maintained per handler).
+                # Notification threads are started in posting order; handlers run asynchronously.
                 self.__event_queue.put(threading.Thread(target=handler, args=[event]))
 
             self.__log_message_posted_event(event)
@@ -433,7 +433,7 @@ class EventDispatch:
             if not event or event == EventDispatch.__ALL_EVENTS:
                 invalid_events.append(event)
         if len(invalid_events) > 0:
-            raise InvalidEventError
+            raise InvalidEventError(invalid_events)
 
     def __post_admin_event_registration(self, handler: Callable, events: [str], is_registered: bool):
         name = EventDispatchEvent.HANDLER_REGISTERED.namespaced_value if is_registered else \

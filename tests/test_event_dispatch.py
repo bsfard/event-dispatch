@@ -323,6 +323,67 @@ def test_post_event__when_two_registered_handlers_for_same_event():
     validate_received_events(handler2, [test_event])
 
 
+def test_post_event__when_excluding_specific_handler():
+    # Objective:
+    # Excluded event-specific handler does not receive event.
+
+    global handler1, handler2
+
+    # Setup
+    test_event = 'test_event'
+    register_handler_for_event(handler1, test_event)
+    register_handler_for_event(handler2, test_event)
+
+    # Test
+    post_event(test_event, exclude_handlers=[handler1.on_event])
+
+    # Verify
+    validate_event_log_count(3)
+    time.sleep(0.1)
+    validate_received_events(handler1, [])
+    validate_received_events(handler2, [test_event])
+
+
+def test_post_event__when_excluding_all_event_handler():
+    # Objective:
+    # Excluded all-event handler does not receive event.
+
+    global handler1, all_event_handler
+
+    # Setup
+    test_event = 'test_event'
+    register_handler_for_event(handler1, test_event)
+    register_handler_for_event(all_event_handler)
+
+    # Test
+    post_event(test_event, exclude_handlers=[all_event_handler.on_event])
+
+    # Verify
+    validate_event_log_count(3)
+    time.sleep(0.1)
+    validate_received_events(handler1, [test_event])
+    validate_received_events(all_event_handler, [])
+
+
+def test_post_event__when_excluding_with_singular_alias():
+    # Objective:
+    # Deprecated singular exclude_handler alias is still supported.
+
+    global handler1
+
+    # Setup
+    test_event = 'test_event'
+    register_handler_for_event(handler1, test_event)
+
+    # Test
+    post_event(test_event, exclude_handler=handler1.on_event)
+
+    # Verify
+    validate_event_log_count(2)
+    time.sleep(0.1)
+    validate_received_events(handler1, [])
+
+
 def test_register__when_invalid_event():
     # Objective:
     # Exception includes the invalid event names.
@@ -467,6 +528,6 @@ def unregister(handler: EventHandler, events: [str]):
     event_dispatch.unregister(handler.on_event, events)
 
 
-def post_event(event: str, payload: Dict[str, Any] = None):
+def post_event(event: str, payload: Dict[str, Any] = None, exclude_handlers=None, exclude_handler=None):
     global event_dispatch
-    event_dispatch.post_event(event, payload)
+    event_dispatch.post_event(event, payload, exclude_handlers, exclude_handler)

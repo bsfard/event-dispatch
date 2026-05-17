@@ -124,25 +124,18 @@ def unregister_from_events(handler: Callable[[Event], None], events: [Union[str,
 
 
 def post_event(event: [Union[str, Enum, NamespacedEnum]], payload: Dict[str, Any] = None,
-               exclude_handlers: Union[Callable[[Event], None], List[Callable[[Event], None]]] = None,
                exclude_handler: Callable[[Event], None] = None):
     """
     Posts an event (with optional payload of info) for which registered listeners (callbacks) can get notified.
     :param event: event name/type (string or Enum or NamespacedEnum) to post
     :param payload: optional dictionary of keyed-values to include with the event
-    :param exclude_handlers: optional handler or list of handlers to exclude from getting the event posted
-    :param exclude_handler: deprecated singular alias for exclude_handlers
+    :param exclude_handler: optional handler to exclude from getting the event posted
     :return: None
     """
 
     if not event:
         return
-    EventDispatchManager().default_dispatch.post_event(
-        EventDispatch.to_string_event(event),
-        payload,
-        exclude_handlers,
-        exclude_handler
-    )
+    EventDispatchManager().default_dispatch.post_event(EventDispatch.to_string_event(event), payload, exclude_handler)
 
 
 def map_events(events_to_map: [Event], event_to_post: Event, ignore_if_exists: bool = False) -> str:
@@ -338,12 +331,10 @@ class EventDispatch:
             self.__log_message_unregistered(handler, events)
 
     def post_event(self, name: str, payload: Dict[str, Any] = None,
-                   exclude_handlers: Union[Callable[[Event], None], List[Callable[[Event], None]]] = None,
                    exclude_handler: Callable[[Event], None] = None):
         with self.__lock:
             payload = payload if payload else {}
             event = Event(name, payload)
-            excluded_handlers = self.__normalize_excluded_handlers(exclude_handlers, exclude_handler)
 
             # Snapshot registered handlers so posting an event cannot mutate registration state.
             event_handlers = list(self.__event_handlers.get(name, []))
@@ -357,8 +348,8 @@ class EventDispatch:
                 if handler not in event_handlers:
                     event_handlers.append(handler)
 
-            if excluded_handlers:
-                event_handlers = [handler for handler in event_handlers if handler not in excluded_handlers]
+            if exclude_handler:
+                event_handlers = [handler for handler in event_handlers if handler != exclude_handler]
 
             # Log event posting info.
             if self.__log_event and (event_handlers or self.__log_event_if_no_handlers):
@@ -381,21 +372,6 @@ class EventDispatch:
             thread = self.__event_queue.get()
             thread.start()
             self.__event_queue.task_done()
-
-    @staticmethod
-    def __normalize_excluded_handlers(exclude_handlers, exclude_handler) -> List[Callable]:
-        excluded_handlers = []
-
-        for excluded in [exclude_handlers, exclude_handler]:
-            if not excluded:
-                continue
-
-            if isinstance(excluded, (list, tuple, set)):
-                excluded_handlers.extend(excluded)
-            else:
-                excluded_handlers.append(excluded)
-
-        return excluded_handlers
 
     def set_event_map_manager(self, event_mapper: EventMapper):
         if self.__event_mapper:

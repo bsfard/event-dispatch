@@ -335,7 +335,7 @@ def test_post_event__when_excluding_specific_handler():
     register_handler_for_event(handler2, test_event)
 
     # Test
-    post_event(test_event, exclude_handlers=[handler1.on_event])
+    post_event(test_event, exclude_handler=handler1.on_event)
 
     # Verify
     validate_event_log_count(3)
@@ -356,32 +356,13 @@ def test_post_event__when_excluding_all_event_handler():
     register_handler_for_event(all_event_handler)
 
     # Test
-    post_event(test_event, exclude_handlers=[all_event_handler.on_event])
+    post_event(test_event, exclude_handler=all_event_handler.on_event)
 
     # Verify
     validate_event_log_count(3)
     time.sleep(0.1)
     validate_received_events(handler1, [test_event])
     validate_received_events(all_event_handler, [])
-
-
-def test_post_event__when_excluding_with_singular_alias():
-    # Objective:
-    # Deprecated singular exclude_handler alias is still supported.
-
-    global handler1
-
-    # Setup
-    test_event = 'test_event'
-    register_handler_for_event(handler1, test_event)
-
-    # Test
-    post_event(test_event, exclude_handler=handler1.on_event)
-
-    # Verify
-    validate_event_log_count(2)
-    time.sleep(0.1)
-    validate_received_events(handler1, [])
 
 
 def test_register__when_invalid_event():
@@ -528,6 +509,6 @@ def unregister(handler: EventHandler, events: [str]):
     event_dispatch.unregister(handler.on_event, events)
 
 
-def post_event(event: str, payload: Dict[str, Any] = None, exclude_handlers=None, exclude_handler=None):
+def post_event(event: str, payload: Dict[str, Any] = None, exclude_handler=None):
     global event_dispatch
-    event_dispatch.post_event(event, payload, exclude_handlers, exclude_handler)
+    event_dispatch.post_event(event, payload, exclude_handler)

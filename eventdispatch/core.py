@@ -152,7 +152,9 @@ def map_events(events_to_map: [Event], event_to_post: Event, ignore_if_exists: b
 class NotifiableError(Exception):
     """Base error that posts event for this error"""
 
-    def __init__(self, message: str, error: str, payload: Dict[str, Any], exception: traceback = None):
+    def __init__(self, message: str, error: str, payload: Dict[str, Any] = None, exception: Exception = None):
+        payload = dict(payload) if payload else {}
+
         # Check if subclass provided an error already, which could be a sub-error type.
         if 'error' not in payload:
             payload['error'] = error
@@ -289,6 +291,8 @@ class EventDispatch:
         self.__event_handlers: Dict[str, List[Callable]] = {}
         self.__event_queue: Queue = Queue()
         self.__event_mapper = None
+        self.__stop_event = threading.Event()
+        self.__monitor_thread = threading.Thread(target=self.monitor_event_queue, daemon=True)
 
         self.pretty_print = pretty_print
 
@@ -298,7 +302,7 @@ class EventDispatch:
         self.__log_event_if_no_handlers: bool = False
         # -------------------------------------------------------------------------------------------------------
 
-        threading.Thread(target=self.monitor_event_queue, daemon=True).start()
+        self.__monitor_thread.start()
 
     def register(self, handler: Callable, events: [str]):
         self.__validate_handler(handler)
@@ -341,6 +345,9 @@ class EventDispatch:
     def post_event(self, name: str, payload: Dict[str, Any] = None,
                    exclude_handler: Callable[[Event], None] = None):
         with self.__lock:
+            if self.__stop_event.is_set():
+                return
+
             payload = payload if payload else {}
             event = Event(name, payload)
 
@@ -378,8 +385,20 @@ class EventDispatch:
     def monitor_event_queue(self):
         while True:
             thread = self.__event_queue.get()
+            if thread is None:
+                self.__event_queue.task_done()
+                return
+
             thread.start()
             self.__event_queue.task_done()
+
+    def stop(self):
+        if self.__stop_event.is_set():
+            return
+
+        self.__stop_event.set()
+        self.__event_queue.put(None)
+        self.__monitor_thread.join()
 
     def set_event_map_manager(self, event_mapper: EventMapper):
         if self.__event_mapper:
@@ -493,6 +512,7 @@ class EventDispatchManager:
 
     def __init__(self, pretty_print: bool = False):
         self.__pretty_print = pretty_print
+        self.__lock = threading.RLock()
 
         # Create default event dispatcher (for local events, as well as events without a channel).
         self.__event_dispatchers: Dict[str, EventDispatch] = {
@@ -501,21 +521,30 @@ class EventDispatchManager:
 
     @property
     def event_dispatchers(self) -> Dict[str, EventDispatch]:
-        return self.__event_dispatchers
+        with self.__lock:
+            return dict(self.__event_dispatchers)
 
     @property
     def default_dispatch(self) -> EventDispatch:
-        return self.__event_dispatchers['']
+        with self.__lock:
+            return self.__event_dispatchers['']
 
     def add_event_dispatch(self, channel: str) -> bool:
-        if channel not in self.__event_dispatchers:
-            self.__event_dispatchers[channel] = EventDispatch(channel, self.__pretty_print)
-            return True
-        return False
+        with self.__lock:
+            if channel not in self.__event_dispatchers:
+                self.__event_dispatchers[channel] = EventDispatch(channel, self.__pretty_print)
+                return True
+            return False
 
     def remove_event_dispatch(self, channel: str):
-        if channel in self.__event_dispatchers:
-            del self.__event_dispatchers[channel]
+        if channel == '':
+            return False
+
+        with self.__lock:
+            event_dispatch = self.__event_dispatchers.pop(channel, None)
+
+        if event_dispatch:
+            event_dispatch.stop()
             return True
         return False
 

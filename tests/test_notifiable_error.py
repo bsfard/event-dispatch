@@ -64,6 +64,20 @@ class ErrorInPayloadError(NotifiableError):
         super().__init__(message, error, payload)
 
 
+class ErrorWithPayloadError(NotifiableError):
+    def __init__(self, payload):
+        message = TEST_ERROR_MESSAGE
+        error = TEST_ERROR1
+        super().__init__(message, error, payload)
+
+
+class ErrorWithNoPayloadError(NotifiableError):
+    def __init__(self):
+        message = TEST_ERROR_MESSAGE
+        error = TEST_ERROR1
+        super().__init__(message, error)
+
+
 def test_notifiable_error__when_error_not_in_payload():
     # Objective:
     # Event name is the error type, and payload has a key 'error' with value set to error type.
@@ -110,3 +124,47 @@ def test_notifiable_error__when_error_in_payload():
     # Verify
     time.sleep(0.1)
     validate_received_event(handler, TEST_ERROR2, expected_payload)
+
+
+def test_notifiable_error__does_not_mutate_provided_payload():
+    # Objective:
+    # Payload provided to error constructor is copied before error metadata is added.
+
+    # Setup
+    payload = {
+        TEST_KEY: TEST_VALUE
+    }
+    original_payload = dict(payload)
+
+    # Test
+    try:
+        raise ErrorWithPayloadError(payload)
+    except ErrorWithPayloadError as e:
+        error_payload = e.payload
+
+    # Verify
+    assert payload == original_payload
+    assert error_payload is not payload
+    assert error_payload['error'] == TEST_ERROR1
+    assert error_payload['message'] == TEST_ERROR_MESSAGE
+
+
+def test_notifiable_error__when_payload_is_none():
+    # Objective:
+    # None payload is treated as an empty payload.
+
+    # Setup
+    global handler
+    register_handler_for_event(handler, TEST_ERROR1)
+
+    # Test
+    try:
+        raise ErrorWithNoPayloadError()
+    except ErrorWithNoPayloadError as e:
+        error_payload = e.payload
+
+    # Verify
+    assert error_payload['error'] == TEST_ERROR1
+    assert error_payload['message'] == TEST_ERROR_MESSAGE
+    time.sleep(0.1)
+    validate_received_event(handler, TEST_ERROR1, error_payload)

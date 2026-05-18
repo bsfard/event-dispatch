@@ -33,7 +33,9 @@ def setup_function():
 
 
 def teardown_function():
-    pass
+    manager = EventDispatchManager()
+    for channel in list(manager.event_dispatchers.keys()):
+        manager.remove_event_dispatch(channel)
 
 
 def teardown_module():
@@ -469,6 +471,63 @@ def test_register__returned_event_log_cannot_mutate_dispatcher():
 
     # Verify
     validate_event_log_count(1)
+
+
+def test_event_dispatch_manager__returned_event_dispatchers_cannot_mutate_manager():
+    # Objective:
+    # Dispatcher registry inspection returns a copy.
+
+    # Setup
+    manager = EventDispatchManager()
+    channel = 'test_channel'
+    manager.add_event_dispatch(channel)
+
+    # Test
+    manager.event_dispatchers.clear()
+
+    # Verify
+    assert channel in manager.event_dispatchers
+    assert '' in manager.event_dispatchers
+
+
+def test_event_dispatch_manager__cannot_remove_default_dispatch():
+    # Objective:
+    # Default dispatcher remains available.
+
+    # Setup
+    manager = EventDispatchManager()
+
+    # Test
+    result = manager.remove_event_dispatch('')
+
+    # Verify
+    assert not result
+    assert manager.default_dispatch
+    assert '' in manager.event_dispatchers
+
+
+def test_event_dispatch_manager__add_and_remove_channel_dispatch():
+    # Objective:
+    # Channel dispatcher can be added and removed.
+
+    # Setup
+    manager = EventDispatchManager()
+    channel = 'test_channel'
+
+    # Test
+    is_added = manager.add_event_dispatch(channel)
+    is_added_again = manager.add_event_dispatch(channel)
+    event_dispatch = manager.event_dispatchers[channel]
+    is_removed = manager.remove_event_dispatch(channel)
+    is_removed_again = manager.remove_event_dispatch(channel)
+
+    # Verify
+    assert is_added
+    assert not is_added_again
+    assert is_removed
+    assert not is_removed_again
+    assert channel not in manager.event_dispatchers
+    assert not event_dispatch._EventDispatch__monitor_thread.is_alive()
 
 
 def test_post_event__when_registered_handler_for_different_event():

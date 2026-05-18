@@ -7,6 +7,7 @@ from .core import EventMapUtil as EventMapUtil
 from .core import EventMapper as EventMapper
 from .core import InvalidDataError as InvalidDataError
 from .core import InvalidEventError as InvalidEventError
+from .core import InvalidHandlerError as InvalidHandlerError
 from .core import MissingKeyError as MissingKeyError
 from .core import NamespacedEnum as NamespacedEnum
 from .core import NotifiableError as NotifiableError

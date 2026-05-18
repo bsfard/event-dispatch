@@ -2,7 +2,7 @@ import time
 from typing import Any, Dict
 
 from eventdispatch import EventDispatch
-from eventdispatch.core import EventDispatchEvent, EventDispatchManager, InvalidEventError
+from eventdispatch.core import EventDispatchEvent, EventDispatchManager, InvalidEventError, InvalidHandlerError
 from helper import EventHandler, validate_test_handler_registered_for_event, \
     validate_handler_registered_for_all_events, validate_event_log_count, validate_expected_handler_count, \
     register_handler_for_event, register, validate_received_events, validate_test_handler_not_registered_for_event
@@ -129,6 +129,24 @@ def test_register__when_for_all_events_when_not_yet_registered():
 
     # Test
     register(all_event_handler, [])
+
+    # Verify
+    validate_expected_handler_count(1)
+    validate_handler_registered_for_all_events(all_event_handler)
+    validate_event_log_count(1)
+
+
+def test_register__when_events_is_none():
+    # Objective:
+    # None event list registers handler for all events.
+
+    global all_event_handler
+
+    # Setup
+    # (none)
+
+    # Test
+    register(all_event_handler, None)
 
     # Verify
     validate_expected_handler_count(1)
@@ -382,6 +400,77 @@ def test_register__when_invalid_event():
         assert e.payload['events'] == invalid_events
 
 
+def test_register__when_invalid_handler():
+    # Objective:
+    # Exception is thrown for handler values that cannot be called.
+
+    global event_dispatch
+
+    # Setup
+    invalid_handler = 'not-callable'
+
+    # Test
+    try:
+        event_dispatch.register(invalid_handler, ['test_event'])
+        assert False, 'Expected to get exception'
+    except InvalidHandlerError as e:
+        assert e.payload['handler'] == repr(invalid_handler)
+
+
+def test_register__returned_event_handlers_cannot_mutate_dispatcher():
+    # Objective:
+    # Event handler inspection returns a copy.
+
+    global handler1
+
+    # Setup
+    test_event = 'test_event'
+    register_handler_for_event(handler1, test_event)
+
+    # Test
+    event_handlers = event_dispatch.event_handlers
+    event_handlers[test_event].clear()
+
+    # Verify
+    validate_test_handler_registered_for_event(handler1, test_event)
+    validate_expected_handler_count(1)
+
+
+def test_register__returned_all_event_handlers_cannot_mutate_dispatcher():
+    # Objective:
+    # All-event handler inspection returns a copy.
+
+    global all_event_handler
+
+    # Setup
+    register_handler_for_event(all_event_handler)
+
+    # Test
+    event_dispatch.all_event_handlers.clear()
+
+    # Verify
+    validate_handler_registered_for_all_events(all_event_handler)
+    validate_expected_handler_count(1)
+
+
+def test_register__returned_event_log_cannot_mutate_dispatcher():
+    # Objective:
+    # Event log inspection returns a copy.
+
+    global handler1
+
+    # Setup
+    test_event = 'test_event'
+    register_handler_for_event(handler1, test_event)
+    validate_event_log_count(1)
+
+    # Test
+    event_dispatch.event_log.clear()
+
+    # Verify
+    validate_event_log_count(1)
+
+
 def test_post_event__when_registered_handler_for_different_event():
     # Objective:
     # No event is propagated.
@@ -434,6 +523,23 @@ def test_unregister__when_registered__multiple_events():
 
     # Test
     unregister(handler1, [test_event1, test_event2])
+
+    # Verify
+    validate_event_log_count(2)
+    validate_expected_handler_count(0)
+
+
+def test_unregister__when_events_is_none():
+    # Objective:
+    # None event list unregisters handler from all events.
+
+    global all_event_handler
+
+    # Setup
+    register_handler_for_event(all_event_handler)
+
+    # Test
+    unregister(all_event_handler, None)
 
     # Verify
     validate_event_log_count(2)

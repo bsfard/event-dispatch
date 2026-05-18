@@ -228,10 +228,12 @@ class EventDispatch:
 
     @property
     def event_log(self) -> deque:
-        return self.__event_log
+        with self.__lock:
+            return deque(self.__event_log, maxlen=self.__EVENT_LOG_SIZE)
 
     def clear_event_log(self):
-        self.__event_log = deque(maxlen=self.__EVENT_LOG_SIZE)
+        with self.__lock:
+            self.__event_log = deque(maxlen=self.__EVENT_LOG_SIZE)
 
     @property
     def log_event_if_no_handlers(self) -> bool:
@@ -243,23 +245,27 @@ class EventDispatch:
 
     @property
     def event_handlers(self) -> Dict[str, List[Callable]]:
-        return self.__event_handlers
+        with self.__lock:
+            return {event: list(handlers) for event, handlers in self.__event_handlers.items()}
 
     @property
     def all_event_handlers(self) -> [Callable]:
-        return self.__event_handlers.get(self.__ALL_EVENTS, [])
+        with self.__lock:
+            return list(self.__event_handlers.get(self.__ALL_EVENTS, []))
 
     def clear_registered_handlers(self):
-        self.__event_handlers: Dict[str, List[Callable]] = {}
+        with self.__lock:
+            self.__event_handlers: Dict[str, List[Callable]] = {}
 
     @property
     def serialized_event_handlers(self) -> Dict[str, Any]:
         serialized_handlers = {}
-        for event, handlers in self.__event_handlers.items():
-            str_handlers = []
-            for handler in handlers:
-                str_handlers.append(self.prune_handler(str(handler)))
-            serialized_handlers[event] = str_handlers
+        with self.__lock:
+            for event, handlers in self.__event_handlers.items():
+                str_handlers = []
+                for handler in handlers:
+                    str_handlers.append(self.prune_handler(str(handler)))
+                serialized_handlers[event] = str_handlers
         return serialized_handlers
 
     @staticmethod
@@ -295,6 +301,7 @@ class EventDispatch:
         threading.Thread(target=self.monitor_event_queue, daemon=True).start()
 
     def register(self, handler: Callable, events: [str]):
+        self.__validate_handler(handler)
         self.__validate_events(events)
 
         is_registered_for_event = False
@@ -313,6 +320,7 @@ class EventDispatch:
             self.__log_message_registered(handler, events)
 
     def unregister(self, handler: Callable, events: [str]):
+        self.__validate_handler(handler)
         self.__validate_events(events)
 
         is_unregistered_for_event = False
@@ -391,6 +399,9 @@ class EventDispatch:
 
     @staticmethod
     def to_string_events(events: [Any]) -> [str]:
+        if not events:
+            return []
+
         string_events = []
         for event in events:
             string_events.append(EventDispatch.to_string_event(event))
@@ -432,12 +443,20 @@ class EventDispatch:
 
     @staticmethod
     def __validate_events(events: [str]):
+        if not events:
+            return
+
         invalid_events = []
         for event in events:
             if not event or event == EventDispatch.__ALL_EVENTS:
                 invalid_events.append(event)
         if len(invalid_events) > 0:
             raise InvalidEventError(invalid_events)
+
+    @staticmethod
+    def __validate_handler(handler: Callable):
+        if not callable(handler):
+            raise InvalidHandlerError(handler)
 
     def __post_admin_event_registration(self, handler: Callable, events: [str], is_registered: bool):
         name = EventDispatchEvent.HANDLER_REGISTERED.namespaced_value if is_registered else \
@@ -507,6 +526,16 @@ class InvalidEventError(NotifiableError):
         error = 'invalid_events'
         payload = {
             'events': events
+        }
+        super().__init__(message, error, payload)
+
+
+class InvalidHandlerError(NotifiableError):
+    def __init__(self, handler: Callable):
+        message = 'Invalid event handler provided.'
+        error = 'invalid_handler'
+        payload = {
+            'handler': repr(handler)
         }
         super().__init__(message, error, payload)
 

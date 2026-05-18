@@ -602,8 +602,11 @@ class EventMap:
                 self.stop()
 
     def stop(self):
-        self.__event_dispatch.unregister(self.on_event, self.__mapped_events)
+        self.unregister_from_events()
         self.__event_dispatch.post_event(EventMapEvent.MAPPING_TRIGGERED.namespaced_value, {'key': self.__key})
+
+    def unregister_from_events(self):
+        self.__event_dispatch.unregister(self.on_event, self.__mapped_events)
 
 
 class EventMapManager(EventMapper):
@@ -612,27 +615,31 @@ class EventMapManager(EventMapper):
     def __init__(self, event_dispatch: EventDispatch):
         self.__event_maps = {}
         self.__event_dispatch = event_dispatch
+        self.__lock = threading.RLock()
         event_dispatch.register(self.on_event, [EventMapEvent.MAPPING_TRIGGERED.namespaced_value])
 
     @property
     def event_maps(self) -> Dict[str, Any]:
-        return self.__event_maps
+        with self.__lock:
+            return dict(self.__event_maps)
 
     def map_events(self, events_to_map: [Event], event_to_post: Event, ignore_if_exists: bool = False) -> str:
         if not events_to_map or not event_to_post:
             raise InvalidMappingEventsError(events_to_map, event_to_post)
 
         key = self.build_key(events_to_map)
-        if key in self.__event_maps:
-            if ignore_if_exists:
-                self.__log_message_ignoring_duplicate_event_mapping(events_to_map, event_to_post)
-                return key
-            else:
-                self.__log_message_duplicate_event_mapping(events_to_map, event_to_post)
-                raise DuplicateMappingError(events_to_map, event_to_post)
+        with self.__lock:
+            if key in self.__event_maps:
+                if ignore_if_exists:
+                    self.__log_message_ignoring_duplicate_event_mapping(events_to_map, event_to_post)
+                    return key
+                else:
+                    self.__log_message_duplicate_event_mapping(events_to_map, event_to_post)
+                    raise DuplicateMappingError(events_to_map, event_to_post)
 
-        # Create and store event map.
-        self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key)
+            # Create and store event map.
+            self.__event_maps[key] = EventMap(self.__event_dispatch, events_to_map, event_to_post, key)
+
         event_name = EventMapEvent.MAPPING_CREATED
         payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)
         self.__event_dispatch.post_event(event_name.namespaced_value, payload)
@@ -641,11 +648,14 @@ class EventMapManager(EventMapper):
 
     def remove_event_map_by_key(self, key: str):
         try:
-            event_map = self.__event_maps.pop(key)
-            payload = EventMapUtil.build_event_mapping_payload(event_map.events_to_map, event_map.event_to_post)
-            self.__event_dispatch.post_event(EventMapEvent.MAPPING_REMOVED.namespaced_value, payload)
+            with self.__lock:
+                event_map = self.__event_maps.pop(key)
         except KeyError:
             raise MappingNotFoundError(key)
+
+        event_map.unregister_from_events()
+        payload = EventMapUtil.build_event_mapping_payload(event_map.events_to_map, event_map.event_to_post)
+        self.__event_dispatch.post_event(EventMapEvent.MAPPING_REMOVED.namespaced_value, payload)
 
     def on_event(self, event: Event):
         if event.name != EventMapEvent.MAPPING_TRIGGERED.namespaced_value:
@@ -658,7 +668,7 @@ class EventMapManager(EventMapper):
             pass
 
     def unregister_from_events(self):
-        self.__event_dispatch.unregister(self.on_event, [EventMapEvent.MAPPING_TRIGGERED])
+        self.__event_dispatch.unregister(self.on_event, [EventMapEvent.MAPPING_TRIGGERED.namespaced_value])
 
     def __log_message_ignoring_duplicate_event_mapping(self, events_to_map: [Event], event_to_post: Event):
         payload = EventMapUtil.build_event_mapping_payload(events_to_map, event_to_post)

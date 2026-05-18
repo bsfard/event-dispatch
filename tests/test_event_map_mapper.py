@@ -4,7 +4,8 @@ import pytest
 
 from eventdispatch.core import EventMapManager, EventDispatch, EventDispatchManager, Event, InvalidMappingEventsError, \
     DuplicateMappingError, MappingNotFoundError, EventMapEvent, post_event
-from helper import EventHandler, validate_received_events, register_handler_for_event
+from helper import EventHandler, validate_received_events, register_handler_for_event, \
+    validate_handler_not_registered_for_event
 
 event_dispatch: EventDispatch
 handler1: EventHandler
@@ -288,6 +289,7 @@ def test_remove_event_map_by_key__when_key_exists():
     register_handler_for_event(handler1, EventMapEvent.MAPPING_REMOVED.namespaced_value)
 
     key = event_map_manager.build_key(events_to_map)
+    event_map = event_map_manager.event_maps[key]
 
     # Test
     event_map_manager.remove_event_map_by_key(key)
@@ -295,6 +297,7 @@ def test_remove_event_map_by_key__when_key_exists():
     # Verify
     time.sleep(0.2)
     validate_event_map_not_exist(events_to_map)
+    validate_handler_not_registered_for_event(event_map.on_event, event_to_watch_1)
     validate_received_events(handler1, [EventMapEvent.MAPPING_REMOVED.namespaced_value])
 
 
@@ -354,6 +357,25 @@ def test__when_have_event_map__mapping_triggered():
     # Verify
     time.sleep(0.2)
     validate_event_map_not_exist(events_to_map)
+
+
+def test_unregister_from_events():
+    # Objective:
+    # Event map manager unregisters from the event it registered for.
+
+    global event_map_manager
+
+    # Setup
+    # (none)
+
+    # Test
+    event_map_manager.unregister_from_events()
+
+    # Verify
+    validate_handler_not_registered_for_event(
+        event_map_manager.on_event,
+        EventMapEvent.MAPPING_TRIGGERED.namespaced_value
+    )
 
 
 def validate_event_map_exists(events_to_map: [Event]):

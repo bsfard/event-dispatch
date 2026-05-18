@@ -279,6 +279,38 @@ def test_on_event__when_last_event(mapping_payload: Dict[str, Any], post_payload
     validate_handler_not_registered_for_event(event_map.on_event, event_to_watch_2)
 
 
+def test_on_event__when_same_event_name_with_different_payloads():
+    # Objective:
+    # Same event name can be watched multiple times with different expected payloads.
+
+    global event_dispatch, handler1
+
+    # Setup
+    register(handler1, [event_to_map])
+
+    event_1_to_watch = Event(event_to_watch_1, {'id': 1})
+    event_2_to_watch = Event(event_to_watch_1, {'id': 2})
+    event_to_post = Event(event_to_map, {})
+    event_map = EventMap(event_dispatch, [event_1_to_watch, event_2_to_watch], event_to_post, '')
+
+    # Test
+    post_event(event_to_watch_1, {'id': 1})
+
+    # Verify
+    time.sleep(0.2)
+    assert event_to_watch_1 in event_map.events_to_watch
+    validate_event_not_received(handler1, event_to_map)
+
+    # Test
+    post_event(event_to_watch_1, {'id': 2})
+
+    # Verify
+    time.sleep(0.2)
+    verify_events_to_watch(event_map, [])
+    validate_received_event(handler1, event_to_map, {})
+    validate_handler_not_registered_for_event(event_map.on_event, event_to_watch_1)
+
+
 def test_on_event__when_all_watched_events_already_occurred():
     # Objective:sss
     # Mapped event is not generated.

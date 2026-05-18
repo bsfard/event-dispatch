@@ -554,8 +554,10 @@ class EventMap:
         self.__event_dispatch = event_dispatch
         self.__events_to_map = events_to_map
         self.__event_to_post = event_to_post
-        self.__events_to_watch = {event.name: event.payload for event in self.__events_to_map}
-        self.__mapped_events = [event.name for event in events_to_map]
+        self.__events_to_watch = {}
+        for event in self.__events_to_map:
+            self.__events_to_watch.setdefault(event.name, []).append(event.payload)
+        self.__mapped_events = list(self.__events_to_watch.keys())
 
         self.__key = key
         self.__lock = threading.RLock()
@@ -578,23 +580,20 @@ class EventMap:
         with self.__lock:
             try:
                 # Check if event is being watched.
-                payload_to_watch = self.__events_to_watch[event.name]
+                payloads_to_watch = self.__events_to_watch[event.name]
 
                 # Check event payload for matching keys and values from payload being watched.
-                for expected_key, expected_value in payload_to_watch.items():
-                    try:
-                        value = event.payload.get(expected_key)
-                        if value != expected_value:
-                            return
-                    except KeyError:
-                        # Event does not have expected payload to watch.
-                        return
+                matching_payload = self.__get_matching_payload(event, payloads_to_watch)
+                if matching_payload is None:
+                    return
             except KeyError:
                 # Not event/payload that is being watched, or event already occurred (and was removed from watch list).
                 return
 
             # Expected keys are present, and expected values confirmed.  Event is expected.
-            del self.__events_to_watch[event.name]
+            payloads_to_watch.remove(matching_payload)
+            if not payloads_to_watch:
+                del self.__events_to_watch[event.name]
 
             # Post mapped event if all expected events have been received.
             if not self.__events_to_watch:
@@ -607,6 +606,20 @@ class EventMap:
 
     def unregister_from_events(self):
         self.__event_dispatch.unregister(self.on_event, self.__mapped_events)
+
+    @staticmethod
+    def __get_matching_payload(event: Event, payloads_to_watch: [Dict[str, Any]]):
+        for payload_to_watch in payloads_to_watch:
+            is_match = True
+            for expected_key, expected_value in payload_to_watch.items():
+                if event.payload.get(expected_key) != expected_value:
+                    is_match = False
+                    break
+
+            if is_match:
+                return payload_to_watch
+
+        return None
 
 
 class EventMapManager(EventMapper):

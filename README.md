@@ -45,7 +45,7 @@ Older versions were previously tested with Python 3.7, 3.8, 3.9, 3.10, and 3.11.
 
 ```shell
 # Pin to a release tag.
-python -m pip install "eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@v0.0.6"
+python -m pip install "eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<release-tag>"
 
 # Pin to an exact commit.
 python -m pip install "eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<commit-sha>"
@@ -57,7 +57,7 @@ python -m pip install "eventdispatch @ git+https://github.com/bsfard/event-dispa
 # Add to requirements file:
 
 # Pin to a release tag.
-eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@v0.0.6
+eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<release-tag>
 
 # Pin to an exact commit.
 eventdispatch @ git+https://github.com/bsfard/event-dispatch.git@<commit-sha>
